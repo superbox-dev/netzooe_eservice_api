@@ -1,0 +1,33 @@
+# OS generated files
+.DS_Store
+._*
+*.swp
+
+# cache
+*.pyc
+
+# virtualenv
+.venv
+
+# GitHub Action
+output/
+
+# checks
+.ruff_cache
+.mypy_cache
+.pytest_cache
+.rumdl_cache
+
+# reports
+reports/
+.coverage
+
+# build package
+*.egg
+*.egg-info
+build/
+dist/
+keba_keenergy_api/version.py
+
+# site
+site/

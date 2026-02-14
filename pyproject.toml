@@ -1,0 +1,163 @@
+[build-system]
+requires = [
+    "setuptools~=80.9.0",
+    "setuptools-scm>=7",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "netzooe_eservice_api"
+description = "A Python wrapper for the unofficial eService-Portal API."
+readme = "README.md"
+authors = [
+    { name = "Michael Hacker", email = "mh@superbox.one" },
+]
+maintainers = [
+    { name = "Michael Hacker", email = "mh@superbox.one" },
+]
+license-files = [
+    "LICENSE"
+]
+keywords = [
+    "api",
+    "component",
+    "custom component",
+    "custom integration",
+    "netzooe",
+    "eservice",
+    "hacs-component",
+    "hacs-integration",
+    "hacs-repository",
+    "hacs",
+    "hass",
+    "home assistant",
+    "home-assistant",
+    "homeassistant",
+    "integration",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3 :: Only",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+requires-python = ">= 3.13"
+dependencies = [
+    "aiohttp==3.*"
+]
+dynamic = ["version"]
+
+[project.urls]
+"Homepage" = "https://github.com/superbox-dev/netzooe_eservice_api"
+"Documentation" = "https://github.com/superbox-dev/netzooe_eservice_api"
+"Issues" = "https://github.com/superbox-dev/netzooe_eservice_api/issues"
+"Source" = "https://github.com/superbox-dev/netzooe_eservice_api"
+
+[dependency-groups]
+dev = [
+    { include-group = "audit" },
+    { include-group = "build" },
+    { include-group = "lint" },
+    { include-group = "test" },
+]
+audit = [
+    "pip-audit>=2.9.0",
+]
+build = [
+    "setuptools~=80.9.0",
+    "build==1.4.0",
+]
+lint = [
+    "black>=25.12.0",
+    "mypy>=1.17.1",
+    "pre-commit>=4.5.1",
+    "ruff>=0.12.9",
+    "rumdl>=0.0.120",
+    "types-PyYAML>=6.0.12.20250809",
+    "yamllint>=1.37.1",
+]
+test = [
+    "aioresponses>=0.7.8",
+    "coverage>=7.10.4",
+    "genbadge[coverage]>=1.1.2",
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.1.0",
+    "pytest-cov>=6.2.1",
+    "pytest-xdist[psutil]>=3.8.0",
+]
+
+[tool.setuptools]
+packages = ["netzooe_eservice_api"]
+
+[tool.setuptools_scm]
+write_to = "netzooe_eservice_api/version.py"
+
+[tool.black]
+line-length = 120
+
+[tool.mypy]
+strict = true
+junit_xml = "reports/mypy.xml"
+untyped_calls_exclude = "aioresponses"
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "COM812",  # missing-trailing-comma
+    "D100",    # undocumented-public-module
+    "D101",    # undocumented-public-class
+    "D104",    # undocumented-public-package
+    "D105",    # undocumented-magic-method
+    "D107",    # undocumented-public-init
+    "D203",    # one-blank-line-before-class
+    "D213",    # multi-line-summary-second-line
+    "ERA001",  # commented-out-code
+    "I001",    # unsorted-imports
+    "PLR0913", # too-many-arguments
+    "S101",    # assert-used
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+    "D102",    # undocumented-public-method
+]
+
+[tool.rumdl]
+line-length = 120
+disable = [
+    "MD052",   # Fix broken reference links and images
+]
+respect-gitignore = true
+
+[tool.rumdl.MD013]
+code_blocks = false
+tables = false
+
+[tool.rumdl.MD024]
+siblings_only = true
+
+[tool.pytest.ini_options]
+log_cli = true
+log_cli_level = "DEBUG"
+log_cli_format = "%(levelname)-8s | %(asctime)s: %(message)s"
+# https://docs.pytest.org/en/latest/reference/reference.html#ini-options-ref
+addopts = "--cov=netzooe_eservice_api --cov-report=term-missing --cov-report=xml:reports/coverage.xml --color=yes --exitfirst --failed-first --strict-config --strict-markers --junitxml=reports/pytest.xml"
+
+[tool.coverage.run] # https://coverage.readthedocs.io/en/latest/config.html#run
+branch = false
+
+[tool.coverage.report] # https://coverage.readthedocs.io/en/latest/config.html#report
+fail_under = 100
+show_missing = true
+skip_covered = true
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "@(abc\\.)?abstractmethod",
+]
