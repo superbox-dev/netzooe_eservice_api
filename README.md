@@ -12,7 +12,7 @@ A Python wrapper for the unofficial Netz Oberösterreich eService-Portal API.
 ## Getting started
 
 ```bash
-pip install netzooe_erservice_api
+pip install netzooe_eservice_api
 ```
 
 ## Changelog
