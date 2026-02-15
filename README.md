@@ -1,6 +1,6 @@
 # Netz OÖ eService API
 
-A Python wrapper for the unofficial eService-Portal API.
+A Python wrapper for the unofficial Netz Oberösterreich eService-Portal API.
 
 ![coverage-badge](https://raw.githubusercontent.com/superbox-dev/netzooe_eservice_api/main/coverage-badge.svg)
 [![Version](https://img.shields.io/pypi/pyversions/netzooe-eservice-api.svg)][pypi-version]

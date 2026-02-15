@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "netzooe_eservice_api"
-description = "A Python wrapper for the unofficial eService-Portal API."
+description = "A Python wrapper for the unofficial Netz Oberösterreich eService-Portal API."
 readme = "README.md"
 authors = [
     { name = "Michael Hacker", email = "mh@superbox.one" },
