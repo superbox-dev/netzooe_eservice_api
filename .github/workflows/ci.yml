@@ -1,0 +1,215 @@
+name: CI
+
+permissions:
+  contents: read
+  pull-requests: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      build-python-package:
+        description: Build python package
+        type: boolean
+  pull_request:
+  push:
+    branches:
+      - main
+      - develop
+    tags:
+      - v*
+
+jobs:
+  configure:
+    name: Configure
+    uses: ./.github/workflows/configure.yml
+
+  code-analysis:
+    name: Code analysis using Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    needs: configure
+    strategy:
+      fail-fast: False
+      matrix:
+        python-version: ${{ fromJson(needs.configure.outputs.environments).python-version }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up project
+        uses: ./.github/actions/setup-project
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Lint python files with black
+        run: uv run black --diff --check $(git ls-files '*.py')
+      - name: Lint python files with mypy
+        run: uv run mypy $(git ls-files '*.py')
+      - name: Lint python files with ruff
+        run: uv run ruff check $(git ls-files '*.py')
+      - name: Lint YAML files
+        run: uv run yamllint $(git ls-files '*.yml' '*.yaml')
+      - name: Lint Markdown files
+        run: uv run rumdl check $(git ls-files '*.md')
+
+  security:
+    name: Security
+    uses: ./.github/workflows/security.yml
+    needs: configure
+    with:
+      environments: ${{ needs.configure.outputs.environments }}
+
+  tests:
+    name: Tests using Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    needs: configure
+    strategy:
+      fail-fast: False
+      matrix:
+        python-version: ${{ fromJson(needs.configure.outputs.environments).python-version }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up project
+        uses: ./.github/actions/setup-project
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Run tests
+        run: uv run pytest -n auto
+      - name: Upload coverage
+        uses: actions/upload-artifact@v6
+        with:
+          name: coverage-xml-${{ matrix.python-version }}
+          path: reports/coverage.xml
+          if-no-files-found: error
+          overwrite: True
+
+  coverage:
+    name: Generate coverage badge
+    runs-on: ubuntu-latest
+    if: github.ref_type != 'tag'
+    needs:
+      - configure
+      - tests
+    permissions:
+      contents: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up project
+        uses: ./.github/actions/setup-project
+        with:
+          python-version: ${{ fromJson(needs.configure.outputs.environments).python-version[0] }}
+      - name: Download coverage
+        uses: actions/download-artifact@v7
+        with:
+          name: coverage-xml-${{ fromJson(needs.configure.outputs.environments).python-version[0] }}
+          path: reports
+      - name: Create coverage badge
+        run: uv run genbadge coverage --input-file reports/coverage.xml
+      - name: Verify coverage badge changed
+        uses: tj-actions/verify-changed-files@v20
+        id: changed-files
+        with:
+          files: coverage-badge.svg
+      - name: Commit coverage badge
+        if: steps.changed-files.outputs.files_changed == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add coverage-badge.svg
+          git commit -m "Updated coverage-badge.svg"
+      - name: Push changes
+        if: steps.changed-files.outputs.files_changed == 'true'
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref }}
+
+  build-python-package:
+    name: Build python package
+    runs-on: ubuntu-latest
+    if: |
+      github.ref_type == 'tag'
+      || (
+        github.ref_type == 'branch'
+        && inputs.build-python-package
+      )
+      && !endsWith(github.ref_name, '/merge')
+    needs:
+      - configure
+      - code-analysis
+      - security
+      - tests
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up project
+        uses: ./.github/actions/setup-project
+        with:
+          python-version: ${{ fromJson(needs.configure.outputs.environments).python-version[0] }}
+      - name: Build package
+        run: uv run python -m build
+      - name: Upload package files
+        uses: actions/upload-artifact@v6
+        with:
+          name: python-package
+          path: dist
+          if-no-files-found: error
+
+  release:
+    name: Release on GitHub
+    runs-on: ubuntu-latest
+    if: github.ref_type == 'tag'
+    needs:
+      - configure
+      - build-python-package
+    permissions:
+      contents: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up project
+        uses: ./.github/actions/setup-project
+        with:
+          python-version: ${{ fromJson(needs.configure.outputs.environments).python-version[0] }}
+      - name: Download files
+        uses: actions/download-artifact@v7
+        with:
+          name: python-package
+          path: dist
+      - name: Check if prerelease
+        id: check_prerelease
+        run: |
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+          echo "Tag: $TAG_NAME"
+
+          if [[ "$TAG_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+b[0-9]+$ ]]; then
+            echo "🟡 Pre-release detected"
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "🟢 Regular release"
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Release on GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.tar.gz
+            dist/*.whl
+          prerelease: ${{ steps.check_prerelease.outputs.prerelease }}
+
+  publish-on-pypi:
+    name: Publish
+    runs-on: ubuntu-latest
+    if: github.ref_type == 'tag'
+    needs:
+      - release
+    steps:
+      - name: Download files
+        uses: actions/download-artifact@v7
+        with:
+          name: python-package
+          path: dist
+      - name: Publish on PyPi
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          packages-dir: dist
