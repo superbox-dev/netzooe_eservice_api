@@ -173,7 +173,7 @@ class TestHappyPathNetzOOEeServiceAPI:
         with aioresponses() as mock_api:
             client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
 
-            mock_api.get(url, status=200, payload={})
+            mock_api.get(url, status=200, payload=[])
 
             result: list[dict[str, Any]] = await client.consents(status)
             assert result == []
@@ -206,7 +206,7 @@ class TestHappyPathNetzOOEeServiceAPI:
         with aioresponses() as mock_api:
             client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
 
-            mock_api.get(url, status=200, payload={})
+            mock_api.get(url, status=200, payload=[])
 
             result: list[dict[str, Any]] = await client.consumptions_profiles(branch)
             assert result == []
@@ -243,7 +243,7 @@ class TestHappyPathNetzOOEeServiceAPI:
             client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
 
             mock_api.post(
-                "https://eservice.netzooe.at/service/v1.0/consumptions/profile/active", status=200, payload={}
+                "https://eservice.netzooe.at/service/v1.0/consumptions/profile/active", status=200, payload=[]
             )
 
             result: list[dict[str, Any]] = await client.consumptions_profile(
