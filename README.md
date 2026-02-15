@@ -2,6 +2,13 @@
 
 A Python wrapper for the unofficial eService-Portal API.
 
+![coverage-badge](https://raw.githubusercontent.com/superbox-dev/netzooe_eservice_api/main/coverage-badge.svg)
+[![Version](https://img.shields.io/pypi/pyversions/netzooe-eservice-api.svg)][pypi-version]
+[![CI](https://github.com/superbox-dev/netzooe_eservice_api/actions/workflows/ci.yml/badge.svg?branch=main)][workflow-ci]
+
+[pypi-version]: https://pypi.python.org/pypi//netzooe-eservice-api
+[workflow-ci]: https://github.com/superbox-dev/netzooe_eservice_api/actions/workflows/ci.yml
+
 ## Getting started
 
 ```bash
