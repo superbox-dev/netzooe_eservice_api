@@ -17,7 +17,7 @@ pip install netzooe_erservice_api
 
 ## Changelog
 
-The changelog lives in the [CHANGELOG.md](CHANGELOG.md) document.
+The changelog lives in the [CHANGELOG.md](https://github.com/superbox-dev/netzooe_eservice_api/blob/main/CHANGELOG.md) document.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Get Involved
@@ -30,4 +30,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 * Support the project by starring it on GitHub ⭐
 
 I'm happy about your contributions to the project!
-You can get started by reading the [CONTRIBUTING.md](CONTRIBUTING.md).
+You can get started by reading the [CONTRIBUTING.md](https://github.com/superbox-dev/netzooe_eservice_api/blob/main/CONTRIBUTING.md).
