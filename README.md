@@ -1,11 +1,11 @@
-# Netz OÖ eService-Portal API
+# Netz OÖ eService API
 
 A Python wrapper for the unofficial eService-Portal API.
 
 ## Getting started
 
 ```bash
-pip install keba-keenergy-api
+pip install netzooe_erservice_api
 ```
 
 ## Changelog
