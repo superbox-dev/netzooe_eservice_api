@@ -18,9 +18,6 @@ class APIError(Exception):
         if status:
             _message = f"{status} {status.phrase}: {status.description}"
 
-            if message:
-                _message = f"{_message} - {message}"
-
         self.message: str = _message
         self.status: int | None = status
 

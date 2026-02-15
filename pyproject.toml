@@ -126,7 +126,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = [
-    "D102",    # undocumented-public-method
+    "D",    # undocumented-public-method
 ]
 
 [tool.rumdl]

@@ -51,7 +51,7 @@ class NetzOOEeServiceAPI:
         self._username = username
         self._password = password
         self._session: ClientSession = session
-        self._xsrf_token: str = ""
+        self.xsrf_token: str = ""
 
     @property
     def headers(self) -> dict[str, str]:
@@ -59,33 +59,23 @@ class NetzOOEeServiceAPI:
         return {
             **COMMON_HEADERS,
             "Content-Type": "application/json",
-            "x-xsrf-token": self._xsrf_token,
+            "x-xsrf-token": self.xsrf_token,
         }
 
     async def _get_session(self) -> ClientResponse:
-        resp: ClientResponse = await self._session.get(
-            f"{ESERVICE_PORTAL_API}/session",
-            headers={
-                **COMMON_HEADERS,
-                "Referer": f"{ESERVICE_PORTAL}/app/login",
-            },
-        )
+        async with self._session.get(f"{ESERVICE_PORTAL_API}/session", headers={**COMMON_HEADERS}) as resp:
+            if resp.status != HTTPStatus.OK:
+                await self._session.close()
+                raise APIError(status=HTTPStatus(resp.status))
 
-        if resp.status != HTTPStatus.OK:
-            raise APIError(status=HTTPStatus(resp.status))
+            return resp
 
-        return resp
-
-    @staticmethod
-    def _get_xsrf_token(headers) -> str:  # type: ignore[no-untyped-def]  # noqa: ANN001
+    def _set_xsrf_token(self, headers) -> None:  # type: ignore[no-untyped-def]  # noqa: ANN001
         cookies: list[str] = headers.getall("Set-Cookie", [])
         cookie_string: str = ";".join(cookies)
 
         if match := re.search(r"XSRF-TOKEN=([^;]+)", cookie_string):
-            return match.group(1)
-
-        msg: str = "No XSRF found"
-        raise APIError(msg)
+            self.xsrf_token = match.group(1)
 
     async def _request(
         self,
@@ -93,20 +83,32 @@ class NetzOOEeServiceAPI:
         url: str,
         *,
         json: Any | None = None,  # noqa: ANN401
+        retry: bool = True,
     ) -> Any:  # noqa: ANN401
-        if not self._xsrf_token:
+        if not self.xsrf_token:
             await self.login()
 
+        headers: dict[str, str] = self.headers.copy()
+
+        if json is not None:
+            headers["Content-Type"] = "application/json"
+
         try:
-            async with self._session.request(method, url, headers=self.headers, json=json) as resp:
+            async with self._session.request(method, url, headers=headers, json=json) as resp:
                 if resp.status == HTTPStatus.OK:
                     return await resp.json()
                 if resp.status == HTTPStatus.UNAUTHORIZED:
+                    if retry:
+                        await self.login()
+                        return await self._request(method, url, json=json, retry=False)
+
+                    await self._session.close()
                     raise AuthenticationError(status=HTTPStatus.UNAUTHORIZED)
 
                 message = await resp.text()
                 raise APIError(message, status=HTTPStatus(resp.status))
         except ClientError as error:
+            await self._session.close()
             raise APIError(str(error)) from error
 
     async def _get(self, url: str) -> Any:  # noqa: ANN401
@@ -117,7 +119,7 @@ class NetzOOEeServiceAPI:
 
     async def login(self) -> None:
         """Authenticate to the Netz OÖ eService portal."""
-        resp: ClientResponse = await self._session.post(
+        async with await self._session.post(
             f"{ESERVICE_PORTAL}/service/j_security_check",
             json={
                 "j_username": self._username,
@@ -127,28 +129,41 @@ class NetzOOEeServiceAPI:
                 **COMMON_HEADERS,
                 "Content-Type": "application/json",
             },
+        ) as resp:
+            if resp.status != HTTPStatus.OK:
+                if resp.status == HTTPStatus.UNAUTHORIZED:
+                    raise AuthenticationError(status=HTTPStatus.UNAUTHORIZED)
+
+                raise APIError(status=HTTPStatus(resp.status))
+
+            _session: ClientResponse = await self._get_session()
+            self._set_xsrf_token(_session.headers)
+
+    async def logout(self) -> None:
+        """Logout from the Netz OÖ eService portal."""
+        await self._session.get(
+            f"{ESERVICE_PORTAL}/service/logout",
+            headers={
+                **COMMON_HEADERS,
+            },
         )
 
-        if resp.status != HTTPStatus.OK:
-            if resp.status == HTTPStatus.UNAUTHORIZED:
-                raise AuthenticationError(status=HTTPStatus.UNAUTHORIZED)
-
-            raise APIError(status=HTTPStatus(resp.status))
-
-        _session: ClientResponse = await self._get_session()
-        self._xsrf_token = self._get_xsrf_token(_session.headers)
+        if not self._session.closed:
+            await self._session.close()
 
     async def dashboard(self) -> dict[str, Any]:
         """Get data from the eService dashboard."""
         data: dict[str, Any] = await self._get(f"{ESERVICE_PORTAL_API}/dashboard")
         return data
 
-    async def consents(self, status: list[ConsentsStatus] | ConsentsStatus | None = None) -> list[dict[str, Any]]:
+    async def consents(self, status: list[ConsentsStatus] | ConsentsStatus | None = None, /) -> list[dict[str, Any]]:
         """Get data from the eService data sharing."""
         _status: str = ""
 
         if status is not None and not isinstance(status, list):
             status = [status]
+
+        if isinstance(status, list):
             _status = ",".join([_.value for _ in status])
             _status = f"?status={_status}"
 
@@ -163,6 +178,8 @@ class NetzOOEeServiceAPI:
 
         if branch is not None and not isinstance(branch, list):
             branch = [branch]
+
+        if isinstance(branch, list):
             _branch = ",".join([_.value for _ in branch])
             _branch = f"?branch={_branch}"
 
