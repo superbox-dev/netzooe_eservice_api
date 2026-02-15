@@ -27,7 +27,7 @@ reports/
 *.egg-info
 build/
 dist/
-keba_keenergy_api/version.py
+netzooe_eservice_api/version.py
 
-# site
-site/
+# others
+netzooe_eservice_api/test.py
