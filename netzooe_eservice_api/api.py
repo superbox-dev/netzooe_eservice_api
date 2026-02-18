@@ -131,6 +131,8 @@ class NetzOOEeServiceAPI:
             },
         ) as resp:
             if resp.status != HTTPStatus.OK:
+                await self._session.close()
+
                 if resp.status == HTTPStatus.UNAUTHORIZED:
                     raise AuthenticationError(status=HTTPStatus.UNAUTHORIZED)
 
@@ -186,8 +188,8 @@ class NetzOOEeServiceAPI:
         data: list[dict[str, Any]] = await self._get(f"{ESERVICE_PORTAL_API}/consumptions/profiles{_branch}")
         return data
 
-    async def contract_account(self, business_partner_number: str, contract_account_number: str) -> dict[str, Any]:
-        """Get data from the eService contract account."""
+    async def contract_accounts(self, business_partner_number: str, contract_account_number: str) -> dict[str, Any]:
+        """Get data from the eService contract accounts."""
         data: dict[str, Any] = await self._get(
             f"{ESERVICE_PORTAL_API}/contract-accounts/{business_partner_number}/{contract_account_number}"
         )

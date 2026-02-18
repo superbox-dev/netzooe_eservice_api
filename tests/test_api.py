@@ -226,7 +226,7 @@ class TestHappyPathNetzOOEeServiceAPI:
 
             mock_api.get("https://eservice.netzooe.at/service/v1.0/contract-accounts/123/345", status=200, payload={})
 
-            result = await client.contract_account(business_partner_number="123", contract_account_number="345")
+            result = await client.contract_accounts(business_partner_number="123", contract_account_number="345")
             assert result == {}
 
             await client.logout()
