@@ -18,3 +18,8 @@ class ConsentsStatus(Enum):
 
 class ConsumptionsProfilesBranch(Enum):
     ELECTRICITY = "STROM"
+
+
+class SynthProfile(Enum):
+    HOUSEHOLD = "Haushalt"
+    PHOTOVOLTAICS = "Photovoltaik"

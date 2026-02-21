@@ -2,6 +2,7 @@ import re
 from http import HTTPStatus
 from typing import Any
 from typing import Literal
+from typing import TypedDict
 
 import aiohttp
 from aiohttp import ClientError
@@ -15,6 +16,16 @@ from netzooe_eservice_api.constants import ESERVICE_PORTAL
 from netzooe_eservice_api.constants import ESERVICE_PORTAL_API
 from netzooe_eservice_api.error import APIError
 from netzooe_eservice_api.error import AuthenticationError
+
+
+class Pod(TypedDict):
+    contract_account_number: str
+    energy_community_id: str
+    profile_type: str
+    best_available_granularity: str
+    meter_point_administration_number: str
+    date_from: str
+    date_to: str
 
 
 class NetzOOEeServiceAPI:
@@ -195,29 +206,24 @@ class NetzOOEeServiceAPI:
         )
         return data
 
-    async def consumptions_profile(
-        self,
-        contract_account_number: str,
-        energy_community_id: str,
-        profile_type: str,
-        best_available_granularity: str,
-        meter_point_administration_number: str,
-        date_from: str,
-        date_to: str,
-    ) -> list[dict[str, Any]]:
+    async def consumptions_profile(self, pods: list[Pod]) -> list[dict[str, Any]]:
         """Get data from the eService consumptions profile."""
         data: list[dict[str, Any]] = await self._post(
             f"{ESERVICE_PORTAL_API}/consumptions/profile/active",
             json={
                 "pods": [
                     {
-                        "energyCommunityId": energy_community_id,
-                        "type": profile_type,
-                        "bestAvailableGranularity": best_available_granularity,
-                        "meterPointAdministrationNumber": meter_point_administration_number,
-                        "contractAccountNumber": contract_account_number,
-                        "timerange": {"from": date_from, "to": date_to},
+                        "contractAccountNumber": pod["contract_account_number"],
+                        "energyCommunityId": pod["energy_community_id"],
+                        "type": pod["profile_type"],
+                        "bestAvailableGranularity": pod["best_available_granularity"],
+                        "meterPointAdministrationNumber": pod["meter_point_administration_number"],
+                        "timerange": {
+                            "from": pod["date_from"],
+                            "to": pod["date_to"],
+                        },
                     }
+                    for pod in pods
                 ],
                 "dimension": "ENERGY",
             },

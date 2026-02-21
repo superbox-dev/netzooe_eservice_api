@@ -8,6 +8,7 @@ from aioresponses import aioresponses
 from yarl import URL
 
 from netzooe_eservice_api.api import NetzOOEeServiceAPI
+from netzooe_eservice_api.api import Pod
 from netzooe_eservice_api.constants import ConsentsStatus
 from netzooe_eservice_api.constants import ConsumptionsProfilesBranch
 from netzooe_eservice_api.error import APIError
@@ -247,13 +248,17 @@ class TestHappyPathNetzOOEeServiceAPI:
             )
 
             result: list[dict[str, Any]] = await client.consumptions_profile(
-                contract_account_number="123",
-                energy_community_id="345",
-                profile_type="mocked-profile",
-                best_available_granularity="mocked-granularity",
-                meter_point_administration_number="AT123",
-                date_from="2026-01-01",
-                date_to="2026-01-30",
+                pods=[
+                    Pod(
+                        contract_account_number="123",
+                        energy_community_id="345",
+                        profile_type="mocked-profile",
+                        best_available_granularity="mocked-granularity",
+                        meter_point_administration_number="AT123",
+                        date_from="2026-01-01",
+                        date_to="2026-01-30",
+                    )
+                ]
             )
             assert result == []
 
