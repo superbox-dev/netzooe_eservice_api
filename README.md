@@ -15,6 +15,37 @@ A Python wrapper for the unofficial Netz Oberösterreich eService-Portal API.
 pip install netzooe_eservice_api
 ```
 
+## Usage
+
+```python
+import asyncio
+from typing import Any
+
+from netzooe_eservice_api.api import NetzOOEeServiceAPI
+
+from aiohttp import ClientSession
+
+async def main():
+    async with ClientSession() as session:
+        client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(
+            username="test",
+            password="test",
+            session=session,
+        )
+
+        # Get dashboard data
+        dashboard: dict[str, Any] = await client.dashboard()
+
+        for dashboard_contract_accounts in dashboard["contractAccounts"]:
+            # Get contract accounts data
+            contract_accounts: dict[str, Any] = await client.contract_accounts(
+                business_partner_number=dashboard_contract_accounts["businessPartnerNumber"],
+                contract_account_number=dashboard_contract_accounts["contractAccountNumber"],
+            )
+
+asyncio.run(main())
+```
+
 ## Changelog
 
 The changelog lives in the [CHANGELOG.md](https://github.com/superbox-dev/netzooe_eservice_api/blob/main/CHANGELOG.md) document.
