@@ -96,15 +96,12 @@ class NetzOOEeServiceAPI:
         json: Any | None = None,  # noqa: ANN401
         retry: bool = True,
     ) -> Any:  # noqa: ANN401
-        if not self.xsrf_token:
-            await self.login()
-
         headers: dict[str, str] = self.headers.copy()
 
-        if json is not None:
-            headers["Content-Type"] = "application/json"
-
         try:
+            if not self.xsrf_token:
+                await self.login()
+
             async with self._session.request(method, url, headers=headers, json=json) as resp:
                 if resp.status == HTTPStatus.OK:
                     return await resp.json()
