@@ -69,7 +69,7 @@ audit = [
 ]
 build = [
     "setuptools~=82.0.0",
-    "build==1.4.3",
+    "build==1.5.0",
 ]
 lint = [
     "black>=25.12.0",
