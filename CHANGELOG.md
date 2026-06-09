@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-06-09
+
+### Changed
+
+- If no session is passed than use a default session for `NetzOOEeServiceAPI()`
+
+### Fixed
+
+- Catch JSON decode errors when the API return a "Wartungsseite"
+
 ## [1.0.2] - 2026-04-05
 
 ### Fixed
