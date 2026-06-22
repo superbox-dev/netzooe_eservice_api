@@ -3,7 +3,6 @@ from typing import Final
 
 import pytest
 from aiohttp import ClientError
-from aiohttp import ClientSession
 from aioresponses import aioresponses
 from yarl import URL
 
@@ -13,13 +12,12 @@ from netzooe_eservice_api.constants import ConsentsStatus
 from netzooe_eservice_api.constants import ConsumptionsProfilesBranch
 from netzooe_eservice_api.error import APIError
 from netzooe_eservice_api.error import AuthenticationError
+from netzooe_eservice_api.error import InvalidJsonError
 
 LOGIN_AND_LOGOUT_API_CALLS: Final[int] = 3
 
 
 async def create_client(mock_api: aioresponses, /, *, repeat: bool | int = False) -> NetzOOEeServiceAPI:
-    session: ClientSession = ClientSession()
-
     mock_api.post(
         "https://eservice.netzooe.at/service/j_security_check",
         status=200,
@@ -44,7 +42,6 @@ async def create_client(mock_api: aioresponses, /, *, repeat: bool | int = False
     client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(
         username="test",
         password="test",  # noqa: S106
-        session=session,
     )
 
     return client
@@ -62,9 +59,10 @@ class TestHappyPathNetzOOEeServiceAPI:
     async def test_login(self) -> None:
         with aioresponses() as mock_api:
             client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
-            await client.logout()
 
             assert client.xsrf_token == "mocked-token-value"  # noqa: S105
+            await client.logout()
+            assert client.xsrf_token == ""
 
             login_key = ("POST", URL("https://eservice.netzooe.at/service/j_security_check"))
             session_key = ("GET", URL("https://eservice.netzooe.at/service/v1.0/session"))
@@ -313,12 +311,10 @@ class TestUnhappyPathNetzOOEeServiceAPI:
                 "https://eservice.netzooe.at/service/j_security_check",
                 status=status,
             )
-            session: ClientSession = ClientSession()
 
             client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(
                 username="test",
                 password="test",  # noqa: S106
-                session=session,
             )
 
             with pytest.raises(exception) as error:
@@ -360,12 +356,9 @@ class TestUnhappyPathNetzOOEeServiceAPI:
                 status=401,
             )
 
-            session: ClientSession = ClientSession()
-
             client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(
                 username="test",
                 password="test",  # noqa: S106
-                session=session,
             )
 
             with pytest.raises(APIError) as error:
@@ -426,3 +419,35 @@ class TestUnhappyPathNetzOOEeServiceAPI:
                 await client.dashboard()
 
             assert str(error.value) == "500 Internal Server Error: Server got itself in trouble"
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("body", "content_type"),
+        [
+            (
+                "<html></html>",
+                "text/html",
+            ),
+            (
+                "<html></html>",
+                "application/json",
+            ),
+        ],
+    )
+    async def test_maintenance_page(self, body: str, content_type: str) -> None:
+        with aioresponses() as mock_api:
+            client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
+
+            mock_api.get(
+                "https://eservice.netzooe.at/service/v1.0/dashboard",
+                status=200,
+                body=body,
+                content_type=content_type,
+            )
+
+            with pytest.raises(InvalidJsonError) as error:
+                await client.dashboard()
+
+            assert str(error.value) == "200 OK: Request fulfilled, document follows"
+
+            await client.logout()

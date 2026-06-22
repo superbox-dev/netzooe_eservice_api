@@ -1,13 +1,13 @@
 import re
 from http import HTTPStatus
+from json.decoder import JSONDecodeError
 from typing import Any
 from typing import Literal
 from typing import TypedDict
 
-import aiohttp
 from aiohttp import ClientError
-from aiohttp import ClientResponse
 from aiohttp import ClientSession
+from aiohttp import ContentTypeError
 
 from netzooe_eservice_api.constants import COMMON_HEADERS
 from netzooe_eservice_api.constants import ConsentsStatus
@@ -16,6 +16,7 @@ from netzooe_eservice_api.constants import ESERVICE_PORTAL
 from netzooe_eservice_api.constants import ESERVICE_PORTAL_API
 from netzooe_eservice_api.error import APIError
 from netzooe_eservice_api.error import AuthenticationError
+from netzooe_eservice_api.error import InvalidJsonError
 
 
 class Pod(TypedDict):
@@ -36,7 +37,7 @@ class NetzOOEeServiceAPI:
         username: str,
         password: str,
         *,
-        session: aiohttp.ClientSession,
+        session: ClientSession | None = None,
     ) -> None:
         """Initialize API with username and password.
 
@@ -61,8 +62,21 @@ class NetzOOEeServiceAPI:
         """
         self._username = username
         self._password = password
-        self._session: ClientSession = session
+
+        self._session: ClientSession | None = session
+        self._custom_session: bool = session is None
+
         self.xsrf_token: str = ""
+
+    async def _get_session(self) -> ClientSession:
+        if self._session is None or self._session.closed:
+            self._session = ClientSession()
+
+        return self._session
+
+    async def _close_session(self) -> None:
+        if self._custom_session and self._session and not self._session.closed:
+            await self._session.close()
 
     @property
     def headers(self) -> dict[str, str]:
@@ -73,13 +87,15 @@ class NetzOOEeServiceAPI:
             "x-xsrf-token": self.xsrf_token,
         }
 
-    async def _get_session(self) -> ClientResponse:
-        async with self._session.get(f"{ESERVICE_PORTAL_API}/session", headers={**COMMON_HEADERS}) as resp:
+    async def _init_api_session(self) -> None:
+        session: ClientSession = await self._get_session()
+
+        async with session.get(f"{ESERVICE_PORTAL_API}/session", headers=COMMON_HEADERS) as resp:
             if resp.status != HTTPStatus.OK:
-                await self._session.close()
+                await self._close_session()
                 raise APIError(status=HTTPStatus(resp.status))
 
-            return resp
+            self._set_xsrf_token(resp.headers)
 
     def _set_xsrf_token(self, headers) -> None:  # type: ignore[no-untyped-def]  # noqa: ANN001
         cookies: list[str] = headers.getall("Set-Cookie", [])
@@ -96,27 +112,34 @@ class NetzOOEeServiceAPI:
         json: Any | None = None,  # noqa: ANN401
         retry: bool = True,
     ) -> Any:  # noqa: ANN401
+        session: ClientSession = await self._get_session()
         headers: dict[str, str] = self.headers.copy()
+        message: str
 
         try:
             if not self.xsrf_token:
                 await self.login()
 
-            async with self._session.request(method, url, headers=headers, json=json) as resp:
+            async with session.request(method, url, headers=headers, json=json) as resp:
                 if resp.status == HTTPStatus.OK:
-                    return await resp.json()
+                    try:
+                        return await resp.json()
+                    except (JSONDecodeError, ContentTypeError) as error:
+                        message = await resp.text()
+                        raise InvalidJsonError(message, status=HTTPStatus(resp.status)) from error
                 if resp.status == HTTPStatus.UNAUTHORIZED:
                     if retry:
                         await self.login()
                         return await self._request(method, url, json=json, retry=False)
 
-                    await self._session.close()
+                    await self._close_session()
+
                     raise AuthenticationError(status=HTTPStatus.UNAUTHORIZED)
 
                 message = await resp.text()
                 raise APIError(message, status=HTTPStatus(resp.status))
         except ClientError as error:
-            await self._session.close()
+            await self._close_session()
             raise APIError(str(error)) from error
 
     async def _get(self, url: str) -> Any:  # noqa: ANN401
@@ -127,7 +150,9 @@ class NetzOOEeServiceAPI:
 
     async def login(self) -> None:
         """Authenticate to the Netz OÖ eService portal."""
-        async with await self._session.post(
+        session: ClientSession = await self._get_session()
+
+        async with session.post(
             f"{ESERVICE_PORTAL}/service/j_security_check",
             json={
                 "j_username": self._username,
@@ -139,27 +164,29 @@ class NetzOOEeServiceAPI:
             },
         ) as resp:
             if resp.status != HTTPStatus.OK:
-                await self._session.close()
+                await self._close_session()
 
                 if resp.status == HTTPStatus.UNAUTHORIZED:
                     raise AuthenticationError(status=HTTPStatus.UNAUTHORIZED)
 
                 raise APIError(status=HTTPStatus(resp.status))
 
-            _session: ClientResponse = await self._get_session()
-            self._set_xsrf_token(_session.headers)
+            await self._init_api_session()
 
     async def logout(self) -> None:
         """Logout from the Netz OÖ eService portal."""
-        await self._session.get(
+        session: ClientSession = await self._get_session()
+
+        await session.get(
             f"{ESERVICE_PORTAL}/service/logout",
             headers={
                 **COMMON_HEADERS,
             },
         )
 
-        if not self._session.closed:
-            await self._session.close()
+        self.xsrf_token = ""
+
+        await self._close_session()
 
     async def dashboard(self) -> dict[str, Any]:
         """Get data from the eService dashboard."""
