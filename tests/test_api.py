@@ -67,6 +67,7 @@ class TestHappyPathNetzOOEeServiceAPI:
             login_key = ("POST", URL("https://eservice.netzooe.at/service/j_security_check"))
             session_key = ("GET", URL("https://eservice.netzooe.at/service/v1.0/session"))
 
+            assert mock_api.requests is not None
             assert login_key in mock_api.requests
             assert session_key in mock_api.requests
 
@@ -110,6 +111,8 @@ class TestHappyPathNetzOOEeServiceAPI:
             await client.logout()
 
             dashboard_key = ("GET", URL("https://eservice.netzooe.at/service/v1.0/dashboard"))
+
+            assert mock_api.requests is not None
             assert dashboard_key in mock_api.requests
 
             assert len(mock_api.requests) == LOGIN_AND_LOGOUT_API_CALLS + 1
@@ -128,6 +131,8 @@ class TestHappyPathNetzOOEeServiceAPI:
             await client.logout()
 
             dashboard_key = ("GET", URL("https://eservice.netzooe.at/service/v1.0/dashboard"))
+
+            assert mock_api.requests is not None
             assert dashboard_key in mock_api.requests
 
             assert len(mock_api.requests) == LOGIN_AND_LOGOUT_API_CALLS + 1
@@ -146,6 +151,8 @@ class TestHappyPathNetzOOEeServiceAPI:
             await client.logout()
 
             dashboard_key = ("GET", URL("https://eservice.netzooe.at/service/v1.0/dashboard"))
+
+            assert mock_api.requests is not None
             assert dashboard_key in mock_api.requests
 
             assert len(mock_api.requests) == LOGIN_AND_LOGOUT_API_CALLS + 1
@@ -160,7 +167,7 @@ class TestHappyPathNetzOOEeServiceAPI:
                     ConsentsStatus.ACTIVE,
                     ConsentsStatus.ACTIVE_UNCHANGEABLE,
                 ],
-                "https://eservice.netzooe.at/service/v1.0/consents?status=ACTIVE%252CACTIVE_UNCHANGEABLE",
+                "https://eservice.netzooe.at/service/v1.0/consents?status=ACTIVE,ACTIVE_UNCHANGEABLE",
             ),
             (
                 ConsentsStatus.ACTIVE,
@@ -180,6 +187,8 @@ class TestHappyPathNetzOOEeServiceAPI:
             await client.logout()
 
             consents_key = ("GET", URL(url))
+
+            assert mock_api.requests is not None
             assert consents_key in mock_api.requests
 
             assert len(mock_api.requests) == LOGIN_AND_LOGOUT_API_CALLS + 1
@@ -213,6 +222,8 @@ class TestHappyPathNetzOOEeServiceAPI:
             await client.logout()
 
             consumptions_profiles_key = ("GET", URL(url))
+
+            assert mock_api.requests is not None
             assert consumptions_profiles_key in mock_api.requests
 
             assert len(mock_api.requests) == LOGIN_AND_LOGOUT_API_CALLS + 1
@@ -231,6 +242,8 @@ class TestHappyPathNetzOOEeServiceAPI:
             await client.logout()
 
             contract_account_key = ("GET", URL("https://eservice.netzooe.at/service/v1.0/contract-accounts/123/345"))
+
+            assert mock_api.requests is not None
             assert contract_account_key in mock_api.requests
 
             assert len(mock_api.requests) == LOGIN_AND_LOGOUT_API_CALLS + 1
@@ -266,6 +279,8 @@ class TestHappyPathNetzOOEeServiceAPI:
                 "POST",
                 URL("https://eservice.netzooe.at/service/v1.0/consumptions/profile/active"),
             )
+
+            assert mock_api.requests is not None
             assert consumptions_profile_key in mock_api.requests
 
             assert len(mock_api.requests) == LOGIN_AND_LOGOUT_API_CALLS + 1
@@ -325,6 +340,7 @@ class TestUnhappyPathNetzOOEeServiceAPI:
 
             login_key = ("POST", URL("https://eservice.netzooe.at/service/j_security_check"))
 
+            assert mock_api.requests is not None
             assert len(mock_api.requests) == 1
             assert login_key in mock_api.requests
             assert len(mock_api.requests[login_key]) == 1
@@ -371,6 +387,7 @@ class TestUnhappyPathNetzOOEeServiceAPI:
             login_key = ("POST", URL("https://eservice.netzooe.at/service/j_security_check"))
             session_key = ("GET", URL("https://eservice.netzooe.at/service/v1.0/session"))
 
+            assert mock_api.requests is not None
             assert login_key in mock_api.requests
             assert session_key in mock_api.requests
 
