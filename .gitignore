@@ -27,6 +27,3 @@ coverage.xml
 build/
 dist/
 netzooe_eservice_api/version.py
-
-# others
-netzooe_eservice_api/test.py
