@@ -1,6 +1,6 @@
 # Netz OÖ eService API
 
-A Python wrapper for the unofficial Netz Oberösterreich eService-Portal API.
+A Python wrapper for the unofficial Netz Oberösterreich eService portal API.
 
 ## Getting started
 
@@ -48,7 +48,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Get Involved
 
-The **Netz OÖ eService-Portal API** is an open-source project and contributions are welcome. You can:
+The **Netz OÖ eService portal API** is an open-source project and contributions are welcome. You can:
 
 * Report [issues](https://github.com/superbox-dev/netzooe_eservice_api/issues/new/choose) or request new features
 * Improve documentation
