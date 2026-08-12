@@ -64,6 +64,6 @@ You can get started by reading the [CONTRIBUTING.md](https://github.com/superbox
 ![Typing: strict][typing-strict]
 ![Code style: Ruff][code-ruff]
 
-[workflow-ci]: https://github.com/superbox-dev/netzooe_eservice/actions/workflows/ci.yml
+[workflow-ci]: https://github.com/superbox-dev/netzooe_eservice_api/actions/workflows/ci.yml
 [typing-strict]: https://img.shields.io/badge/typing-strict-green.svg
 [code-ruff]: https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/charliermarsh/ruff/main/assets/badge/v1.json
