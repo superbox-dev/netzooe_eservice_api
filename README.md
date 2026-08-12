@@ -2,13 +2,6 @@
 
 A Python wrapper for the unofficial Netz Oberösterreich eService-Portal API.
 
-![coverage-badge](https://raw.githubusercontent.com/superbox-dev/netzooe_eservice_api/main/coverage-badge.svg)
-[![Version](https://img.shields.io/pypi/pyversions/netzooe-eservice-api.svg)][pypi-version]
-[![CI](https://github.com/superbox-dev/netzooe_eservice_api/actions/workflows/ci.yml/badge.svg?branch=main)][workflow-ci]
-
-[pypi-version]: https://pypi.python.org/pypi//netzooe-eservice-api
-[workflow-ci]: https://github.com/superbox-dev/netzooe_eservice_api/actions/workflows/ci.yml
-
 ## Getting started
 
 ```bash
@@ -64,3 +57,13 @@ The **Netz OÖ eService-Portal API** is an open-source project and contributions
 
 I'm happy about your contributions to the project!
 You can get started by reading the [CONTRIBUTING.md](https://github.com/superbox-dev/netzooe_eservice_api/blob/main/CONTRIBUTING.md).
+
+![coverage-badge](https://raw.githubusercontent.com/superbox-dev/netzooe_eservice/main/coverage-badge.svg)
+
+[![CI](https://github.com/superbox-dev/netzooe_eservice_api/actions/workflows/ci.yml/badge.svg?branch=main)][workflow-ci]
+![Typing: strict][typing-strict]
+![Code style: Ruff][code-ruff]
+
+[workflow-ci]: https://github.com/superbox-dev/netzooe_eservice/actions/workflows/ci.yml
+[typing-strict]: https://img.shields.io/badge/typing-strict-green.svg
+[code-ruff]: https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/charliermarsh/ruff/main/assets/badge/v1.json
