@@ -1,8 +1,11 @@
+"""Asynchronous client for the Netz OÖ eService API."""
+
 import re
 from http import HTTPStatus
 from json.decoder import JSONDecodeError
 from typing import Any
 from typing import Literal
+from typing import NotRequired
 from typing import TypedDict
 
 from aiohttp import ClientError
@@ -10,18 +13,21 @@ from aiohttp import ClientSession
 from aiohttp import ContentTypeError
 
 from netzooe_eservice_api.constants import COMMON_HEADERS
-from netzooe_eservice_api.constants import ConsentsStatus
-from netzooe_eservice_api.constants import ConsumptionsProfilesBranch
 from netzooe_eservice_api.constants import ESERVICE_PORTAL
 from netzooe_eservice_api.constants import ESERVICE_PORTAL_API
+from netzooe_eservice_api.constants import ConsentsStatus
+from netzooe_eservice_api.constants import ConsumptionsDimension
+from netzooe_eservice_api.constants import ConsumptionsProfilesBranch
 from netzooe_eservice_api.error import APIError
 from netzooe_eservice_api.error import AuthenticationError
 from netzooe_eservice_api.error import InvalidJsonError
 
 
 class Pod(TypedDict):
+    """Point of delivery data used by the eService API."""
+
     contract_account_number: str
-    energy_community_id: str
+    energy_community_id: NotRequired[str | None]
     profile_type: str
     best_available_granularity: str
     meter_point_administration_number: str
@@ -109,9 +115,9 @@ class NetzOOEeServiceAPI:
         method: Literal["GET", "POST"],
         url: str,
         *,
-        json: Any | None = None,  # noqa: ANN401
+        json: Any | None = None,
         retry: bool = True,
-    ) -> Any:  # noqa: ANN401
+    ) -> Any:
         session: ClientSession = await self._get_session()
         headers: dict[str, str] = self.headers.copy()
         message: str
@@ -142,10 +148,10 @@ class NetzOOEeServiceAPI:
             await self._close_session()
             raise APIError(str(error)) from error
 
-    async def _get(self, url: str) -> Any:  # noqa: ANN401
+    async def _get(self, url: str) -> Any:
         return await self._request("GET", url)
 
-    async def _post(self, url: str, /, *, json: Any) -> Any:  # noqa: ANN401
+    async def _post(self, url: str, /, *, json: Any) -> Any:
         return await self._request("POST", url, json=json)
 
     async def login(self) -> None:
@@ -230,7 +236,9 @@ class NetzOOEeServiceAPI:
         )
         return data
 
-    async def consumptions_profile(self, pods: list[Pod]) -> list[dict[str, Any]]:
+    async def consumptions_profile(
+        self, pods: list[Pod], dimension: ConsumptionsDimension = ConsumptionsDimension.ENERGY
+    ) -> list[dict[str, Any]]:
         """Get data from the eService consumptions profile."""
         data: list[dict[str, Any]] = await self._post(
             f"{ESERVICE_PORTAL_API}/consumptions/profile/active",
@@ -238,7 +246,11 @@ class NetzOOEeServiceAPI:
                 "pods": [
                     {
                         "contractAccountNumber": pod["contract_account_number"],
-                        "energyCommunityId": pod["energy_community_id"],
+                        **(
+                            {"energyCommunityId": pod["energy_community_id"]}
+                            if pod.get("energy_community_id") is not None
+                            else {}
+                        ),
                         "type": pod["profile_type"],
                         "bestAvailableGranularity": pod["best_available_granularity"],
                         "meterPointAdministrationNumber": pod["meter_point_administration_number"],
@@ -249,7 +261,7 @@ class NetzOOEeServiceAPI:
                     }
                     for pod in pods
                 ],
-                "dimension": "ENERGY",
+                "dimension": dimension.value,
             },
         )
         return data

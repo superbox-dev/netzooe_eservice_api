@@ -25,6 +25,7 @@ from netzooe_eservice_api.api import NetzOOEeServiceAPI
 
 from aiohttp import ClientSession
 
+
 async def main():
     async with ClientSession() as session:
         client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(
@@ -42,6 +43,7 @@ async def main():
                 business_partner_number=dashboard_contract_accounts["businessPartnerNumber"],
                 contract_account_number=dashboard_contract_accounts["contractAccountNumber"],
             )
+
 
 asyncio.run(main())
 ```

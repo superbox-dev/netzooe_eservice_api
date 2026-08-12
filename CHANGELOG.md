@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-08-12
+
+### Added
+
+- Add argument `dimension` to `consumptions_profile()`
+
+### Changed
+
+- `consumptions_profile()` now supports an optional `energy_community_id` in `Pod`
+
 ## [1.1.0] - 2026-06-09
 
 ### Changed

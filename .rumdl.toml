@@ -1,0 +1,13 @@
+[global]
+line-length = 120
+disable = [
+    "MD052",   # Fix broken reference links and images
+]
+respect-gitignore = true
+
+[MD013]
+code_blocks = false
+tables = false
+
+[MD024]
+siblings_only = true

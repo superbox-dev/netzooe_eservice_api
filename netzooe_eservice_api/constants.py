@@ -1,3 +1,5 @@
+"""Constants used by the Netz OÖ eService API."""
+
 from enum import Enum
 
 ESERVICE_PORTAL: str = "https://eservice.netzooe.at"
@@ -11,15 +13,28 @@ COMMON_HEADERS: dict[str, str] = {
 
 
 class ConsentsStatus(Enum):
+    """Consent status values."""
+
     ACTIVE = "ACTIVE"
     ACTIVE_UNCHANGEABLE = "ACTIVE_UNCHANGEABLE"
     REVOKED = "REVOKED"
 
 
 class ConsumptionsProfilesBranch(Enum):
+    """Consumption profile branch values."""
+
     ELECTRICITY = "STROM"
 
 
 class SynthProfile(Enum):
+    """Synthetic profile types."""
+
     HOUSEHOLD = "Haushalt"
     PHOTOVOLTAICS = "Photovoltaik"
+
+
+class ConsumptionsDimension(Enum):
+    """Consumption measurement dimensions."""
+
+    ENERGY = "ENERGY"
+    POWER = "POWER"
