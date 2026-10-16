@@ -15,6 +15,7 @@ authors = [
 maintainers = [
     { name = "Michael Hacker", email = "mh@superbox.one" },
 ]
+license = "Apache-2.0"
 license-files = [
     "LICENSE"
 ]
@@ -44,6 +45,8 @@ classifiers = [
     "Operating System :: OS Independent",
     "Topic :: Software Development :: Libraries",
     "Topic :: Software Development :: Libraries :: Python Modules",
+    "Framework :: AsyncIO",
+    "Typing :: Typed",
 ]
 requires-python = ">= 3.13"
 dependencies = [
@@ -90,4 +93,4 @@ test = [
 packages = ["netzooe_eservice_api"]
 
 [tool.setuptools_scm]
-write_to = "netzooe_eservice_api/version.py"
+version_file = "netzooe_eservice_api/version.py"

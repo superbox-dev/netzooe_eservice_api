@@ -58,7 +58,7 @@ The **Netz OÖ eService portal API** is an open-source project and contributions
 I'm happy about your contributions to the project!
 You can get started by reading the [CONTRIBUTING.md](https://github.com/superbox-dev/netzooe_eservice_api/blob/main/CONTRIBUTING.md).
 
-![coverage-badge](https://raw.githubusercontent.com/superbox-dev/netzooe_eservice/main/coverage-badge.svg)
+![coverage-badge](https://raw.githubusercontent.com/superbox-dev/netzooe_eservice_api/main/coverage-badge.svg)
 
 [![CI](https://github.com/superbox-dev/netzooe_eservice_api/actions/workflows/ci.yml/badge.svg?branch=main)][workflow-ci]
 ![Typing: strict][typing-strict]

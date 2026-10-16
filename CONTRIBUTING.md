@@ -21,10 +21,10 @@ GitHub is used to host code, to track issues and feature requests, as well as ac
 
 Pull requests are the best way to propose changes to the codebase.
 
-1. Fork the repo and create your branch from `main`
+1. Fork the repo and create your branch from `develop`
 2. If you've changed something, update the documentation.
 3. Make sure your code lints with `./scripts/lint.sh`.
-4. Test you contribution.
+4. Test your contribution.
 5. Issue that pull request!
 
 ## Report bugs using Github's [issues](https://github.com/superbox-dev/netzooe_eservice_api/issues)
@@ -67,6 +67,6 @@ uv run pytest
 
 By contributing, you agree that your contributions will be licensed under its [Apache License][license].
 
-[license]: https://github.com/superbox-dev/keba_keenergy/blob/main/LICENSE
+[license]: https://github.com/superbox-dev/netzooe_eservice_api/blob/main/LICENSE
 
 <!--end-contributing-->

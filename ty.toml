@@ -1,2 +1,5 @@
+[environment]
+python-version = "3.13"
+
 [terminal]
 error-on-warning = true
