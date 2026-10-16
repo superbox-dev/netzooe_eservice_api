@@ -2,7 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """Asynchronous client for the Netz OÖ eService API."""
 
+import asyncio
 import re
+from collections.abc import Sequence
+from enum import Enum
 from http import HTTPStatus
 from json.decoder import JSONDecodeError
 from typing import TYPE_CHECKING
@@ -11,6 +14,7 @@ from typing import Literal
 from typing import NotRequired
 from typing import TypedDict
 from typing import cast
+from urllib.parse import quote
 
 from aiohttp import ClientError
 from aiohttp import ClientSession
@@ -30,6 +34,15 @@ if TYPE_CHECKING:
     from multidict import CIMultiDictProxy
 
 type JSONResponse = dict[str, Any] | list[dict[str, Any]]
+
+
+def _enum_query(name: str, value: Sequence[Enum] | Enum | None) -> str:
+    """Build a query string like ``?name=A,B`` from one or more enum members, or ``""`` for `None`."""
+    if value is None:
+        return ""
+
+    values: Sequence[Enum] = [value] if isinstance(value, Enum) else value
+    return f"?{name}={','.join(member.value for member in values)}"
 
 
 class Pod(TypedDict):
@@ -106,10 +119,13 @@ class NetzOOEeServiceAPI:
         self._custom_session: bool = session is None
 
         self.xsrf_token: str = ""
+        self._login_lock: asyncio.Lock = asyncio.Lock()
 
     async def _get_session(self) -> ClientSession:
         if self._session is None or self._session.closed:
+            # Also for a passed session that is already closed. The new session is owned by the client.
             self._session = ClientSession()
+            self._custom_session = True
 
         return self._session
 
@@ -132,7 +148,7 @@ class NetzOOEeServiceAPI:
         async with session.get(f"{ESERVICE_PORTAL_API}/session", headers=COMMON_HEADERS) as resp:
             if resp.status != HTTPStatus.OK:
                 await self._close_session()
-                raise APIError(status=HTTPStatus(resp.status))
+                raise APIError(status=resp.status)
 
             self._set_xsrf_token(resp.headers)
 
@@ -151,24 +167,26 @@ class NetzOOEeServiceAPI:
         json: dict[str, Any] | None = None,
         retry: bool = True,
     ) -> JSONResponse:
-        session: ClientSession = await self._get_session()
-        headers: dict[str, str] = self.headers.copy()
         message: str
 
         try:
             if not self.xsrf_token:
-                await self.login()
+                await self._relogin(expired_token="")
 
-            async with session.request(method, url, headers=headers, json=json) as resp:
+            # Read session and headers after the login, the portal rejects POST requests without a valid XSRF token.
+            session: ClientSession = await self._get_session()
+            used_token: str = self.xsrf_token
+
+            async with session.request(method, url, headers=self.headers, json=json) as resp:
                 if resp.status == HTTPStatus.OK:
                     try:
                         return await resp.json()
                     except (JSONDecodeError, ContentTypeError) as error:
                         message = await resp.text()
-                        raise InvalidJsonError(message, status=HTTPStatus(resp.status)) from error
+                        raise InvalidJsonError(message, status=resp.status) from error
                 if resp.status == HTTPStatus.UNAUTHORIZED:
                     if retry:
-                        await self.login()
+                        await self._relogin(expired_token=used_token)
                         return await self._request(method, url, json=json, retry=False)
 
                     await self._close_session()
@@ -176,10 +194,16 @@ class NetzOOEeServiceAPI:
                     raise AuthenticationError(status=HTTPStatus.UNAUTHORIZED)
 
                 message = await resp.text()
-                raise APIError(message, status=HTTPStatus(resp.status))
-        except ClientError as error:
+                raise APIError(message, status=resp.status)
+        except (ClientError, TimeoutError) as error:
             await self._close_session()
-            raise APIError(str(error)) from error
+            raise APIError(str(error) or type(error).__name__) from error
+
+    async def _relogin(self, *, expired_token: str) -> None:
+        # Concurrent requests share one login. Skip it if another request already got a new token.
+        async with self._login_lock:
+            if self.xsrf_token == expired_token:
+                await self.login()
 
     async def _get(self, url: str) -> JSONResponse:
         return await self._request("GET", url)
@@ -197,50 +221,62 @@ class NetzOOEeServiceAPI:
         AuthenticationError
             The credentials were rejected (HTTP 401).
         APIError
-            Any other HTTP error, e.g. if the session could not be created.
+            Any other HTTP or connection error, e.g. if the session could not be created.
 
         """
         session: ClientSession = await self._get_session()
 
-        async with session.post(
-            f"{ESERVICE_PORTAL}/service/j_security_check",
-            json={
-                "j_username": self._username,
-                "j_password": self._password,
-            },
-            headers={
-                **COMMON_HEADERS,
-                "Content-Type": "application/json",
-            },
-        ) as resp:
-            if resp.status != HTTPStatus.OK:
-                await self._close_session()
+        try:
+            async with session.post(
+                f"{ESERVICE_PORTAL}/service/j_security_check",
+                json={
+                    "j_username": self._username,
+                    "j_password": self._password,
+                },
+                headers={
+                    **COMMON_HEADERS,
+                    "Content-Type": "application/json",
+                },
+            ) as resp:
+                if resp.status != HTTPStatus.OK:
+                    await self._close_session()
 
-                if resp.status == HTTPStatus.UNAUTHORIZED:
-                    raise AuthenticationError(status=HTTPStatus.UNAUTHORIZED)
+                    if resp.status == HTTPStatus.UNAUTHORIZED:
+                        raise AuthenticationError(status=HTTPStatus.UNAUTHORIZED)
 
-                raise APIError(status=HTTPStatus(resp.status))
+                    raise APIError(status=resp.status)
 
-            await self._init_api_session()
+                await self._init_api_session()
+        except (ClientError, TimeoutError) as error:
+            await self._close_session()
+            raise APIError(str(error) or type(error).__name__) from error
 
     async def logout(self) -> None:
         """Log out from the eService portal and reset the XSRF token.
 
-        If the client created its own session, the session is closed.
+        If the client created its own session, the session is closed. The XSRF token is reset and the session
+        is closed even if the logout request fails.
+
+        Raises
+        ------
+        APIError
+            Connection error during the logout request.
 
         """
-        session: ClientSession = await self._get_session()
-
-        await session.get(
-            f"{ESERVICE_PORTAL}/service/logout",
-            headers={
-                **COMMON_HEADERS,
-            },
-        )
-
-        self.xsrf_token = ""
-
-        await self._close_session()
+        try:
+            if self._session is not None and not self._session.closed:
+                async with self._session.get(
+                    f"{ESERVICE_PORTAL}/service/logout",
+                    headers={
+                        **COMMON_HEADERS,
+                    },
+                ):
+                    pass
+        except (ClientError, TimeoutError) as error:
+            raise APIError(str(error) or type(error).__name__) from error
+        finally:
+            self.xsrf_token = ""
+            await self._close_session()
 
     async def dashboard(self) -> dict[str, Any]:
         """Get the dashboard data, e.g. business partners and contract accounts.
@@ -295,24 +331,15 @@ class NetzOOEeServiceAPI:
         >>> await client.consents([ConsentsStatus.ACTIVE, ConsentsStatus.ACTIVE_UNCHANGEABLE])
 
         """
-        _status: str = ""
-
-        if status is not None and not isinstance(status, list):
-            status = [status]
-
-        if isinstance(status, list):
-            _status = ",".join([_.value for _ in status])
-            _status = f"?status={_status}"
-
         data: list[dict[str, Any]] = cast(
             "list[dict[str, Any]]",
-            await self._get(f"{ESERVICE_PORTAL_API}/consents{_status}"),
+            await self._get(f"{ESERVICE_PORTAL_API}/consents{_enum_query('status', status)}"),
         )
         return data
 
     async def consumptions_profiles(
         self,
-        branch: list[ConsumptionsProfilesBranch] | ConsumptionsProfilesBranch | None,
+        branch: list[ConsumptionsProfilesBranch] | ConsumptionsProfilesBranch | None = None,
     ) -> list[dict[str, Any]]:
         """Get the consumption profiles of all points of delivery.
 
@@ -340,18 +367,9 @@ class NetzOOEeServiceAPI:
         >>> await client.consumptions_profiles(ConsumptionsProfilesBranch.ELECTRICITY)
 
         """
-        _branch: str = ""
-
-        if branch is not None and not isinstance(branch, list):
-            branch = [branch]
-
-        if isinstance(branch, list):
-            _branch = ",".join([_.value for _ in branch])
-            _branch = f"?branch={_branch}"
-
         data: list[dict[str, Any]] = cast(
             "list[dict[str, Any]]",
-            await self._get(f"{ESERVICE_PORTAL_API}/consumptions/profiles{_branch}"),
+            await self._get(f"{ESERVICE_PORTAL_API}/consumptions/profiles{_enum_query('branch', branch)}"),
         )
         return data
 
@@ -390,7 +408,8 @@ class NetzOOEeServiceAPI:
         data: dict[str, Any] = cast(
             "dict[str, Any]",
             await self._get(
-                f"{ESERVICE_PORTAL_API}/contract-accounts/{business_partner_number}/{contract_account_number}",
+                f"{ESERVICE_PORTAL_API}/contract-accounts/"
+                f"{quote(business_partner_number, safe='')}/{quote(contract_account_number, safe='')}",
             ),
         )
         return data

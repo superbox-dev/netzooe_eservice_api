@@ -7,10 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added the `detail` attribute to `APIError` with the original message, e.g. the response body or the content of the
+  maintenance page
+- Exported `NetzOOEeServiceAPI`, `Pod`, the enums and the exceptions from the `netzooe_eservice_api` package
+
 ### Changed
 
 - Added the `Apache-2.0` license expression and the `Typing :: Typed` / `Framework :: AsyncIO` classifiers
   to the package metadata
+- The `branch` argument of `consumptions_profiles()` is now optional and defaults to `None`
+- Concurrent requests without a valid session now share a single login
+- `logout()` no longer sends a request if the client has no open session
+
+### Fixed
+
+- Fixed the first `POST` request after the automatic login (e.g. `consumptions_profile()` without a prior `login()`)
+  being sent without the XSRF token and failing with `400 Bad Request`
+- Caught timeouts and unknown HTTP status codes (e.g. `520`) and raised them as `APIError`
+- Caught `aiohttp` exceptions in `login()` and `logout()` when they are called directly and raised them as `APIError`
+- Fixed `logout()` not releasing the response of the logout request
+- Fixed a session leak when a closed `session` was passed to `NetzOOEeServiceAPI()`
+- URL encoded the path parameters of `contract_accounts()`
+- `APIError` now passes its message to `Exception`, so `args` and `repr()` contain the message
 
 ## [1.1.1] - 2026-08-12
 

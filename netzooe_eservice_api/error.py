@@ -13,25 +13,33 @@ class APIError(Exception):
         message: str = "",
         /,
         *,
-        status: HTTPStatus | None = None,
+        status: HTTPStatus | int | None = None,
     ) -> None:
         """Initialize an API error.
 
         Parameters
         ----------
         message
-            Error message. Is replaced by the HTTP status description if a status is given.
+            Error message. Is replaced by the HTTP status description if a status is given,
+            but is kept in `detail`, e.g. the response body.
         status
-            HTTP status associated with the error.
+            HTTP status associated with the error. Status codes that are not part of `HTTPStatus` are kept as `int`.
 
         """
         _message: str = message
 
-        if status:
-            _message = f"{status} {status.phrase}: {status.description}"
+        if status is not None:
+            try:
+                status = HTTPStatus(status)
+                _message = f"{status} {status.phrase}: {status.description}"
+            except ValueError:
+                _message = f"{status} Unknown Status"
+
+        super().__init__(_message)
 
         self.message: str = _message
-        self.status: int | None = status
+        self.detail: str = message
+        self.status: HTTPStatus | int | None = status
 
     def __str__(self) -> str:
         """Return the error message."""

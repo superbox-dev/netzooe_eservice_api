@@ -711,7 +711,7 @@
             'Content-Type': 'application/json',
             'User-Agent': 'Mozilla/5.0',
             'client-id': 'netzonline',
-            'x-xsrf-token': '',
+            'x-xsrf-token': 'mocked-token-value',
           }),
           'json': None,
         }),
