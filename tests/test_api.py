@@ -576,6 +576,8 @@ class TestUnhappyPathNetzOOEeServiceAPI:
             assert str(error.value) == "500 Internal Server Error: Server got itself in trouble"
             assert error.value.detail == "mocked body"
 
+            await client.logout()
+
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
         ("body", "content_type"),

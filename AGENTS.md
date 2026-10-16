@@ -34,7 +34,6 @@ Before finishing a change, run:
   - turning a crash (`KeyError`, uncaught `aiohttp` exception, ...) into an `APIError`
   - changing `_`-prefixed internals
 - New public classes and enums are exported in `netzooe_eservice_api/__init__.py` (`__all__`)
-- **100% test coverage** (lines and branches) is enforced
 - **Python 3.13 minimum**, so no:
   - `except A, B` without parentheses (PEP 758)
   - template strings `t"..."` (PEP 750)
@@ -48,9 +47,7 @@ Before finishing a change, run:
 
 - NumPy-style docstrings (also in tests)
 - No `# noqa`, no `# type: ignore`, no new `ruff.toml` ignores. Fix the code instead
-- No real credentials or customer data:
-  - use placeholders like `"test"`
-  - use constants like `MOCK_CREDENTIAL` in tests
+- No real credentials or customer data, use placeholders like `"test"`
 - `git add` new files, CI only checks tracked files
 - Never edit:
   - `netzooe_eservice_api/version.py` (generated)
@@ -75,11 +72,18 @@ Before finishing a change, run:
 
 1. `constants.py`: add new enums or constants
 2. `api.py`: add the public method, use `_get` / `_post`
-3. `tests/test_api.py`:
-   - mock HTTP with `aioresponses` (`create_client` / `create_logged_in_client`)
-   - assert the recorded requests with the `snapshot` fixture
-   - cover happy and unhappy paths
+3. `tests/test_api.py`: cover happy and unhappy paths (see [Tests](#tests))
 4. `README.md`: update the usage example if relevant
+
+## Tests
+
+- **100% test coverage** (lines and branches) is enforced
+- Mock HTTP with `aioresponses` (`create_client` / `create_logged_in_client`)
+- Assert the recorded requests with the `snapshot` fixture
+- Use constants like `MOCK_CREDENTIAL`, no real credentials or customer data
+- Never test or patch internal methods or attributes (e.g. `api._request()`, `api._session`):
+  - drive the client only through its public methods and the mocked HTTP responses
+  - assert return values, raised exceptions or the recorded requests
 
 ## Changelog and git
 
@@ -88,6 +92,10 @@ Before finishing a change, run:
   - Keep a Changelog format, past tense
   - identifiers in backticks
   - issues as `([Issue #67][issue-67])`
+  - releases are linked at the bottom:
+    - `[Unreleased]` compares the latest tag with `HEAD`
+    - each release compares its tag with the previous one
+    - the first release links to its release tag
 - Branches:
   - work on `develop`
   - `main` is the release branch
