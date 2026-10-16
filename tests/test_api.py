@@ -8,9 +8,11 @@ from typing import Any
 import pytest
 from aiohttp import ClientError
 from aiohttp import ClientSession
+from aioresponses import CallbackResult
 from aioresponses import aioresponses
 from aioresponses.core import RequestCall
 from syrupy import SnapshotAssertion
+from yarl import URL
 
 from netzooe_eservice_api.api import NetzOOEeServiceAPI
 from netzooe_eservice_api.api import Pod
@@ -24,6 +26,7 @@ from netzooe_eservice_api.error import InvalidJsonError
 MOCK_USERNAME: str = "test"
 MOCK_CREDENTIAL: str = "test"
 MOCK_XSRF: str = "mocked-token-value"
+MOCK_NEW_XSRF: str = "mocked-new-token-value"
 MOCK_UNKNOWN_STATUS: int = 520
 
 
@@ -315,6 +318,44 @@ class TestHappyPathNetzOOEeServiceAPI:
             await client.logout()
 
     @pytest.mark.asyncio
+    async def test_concurrent_requests_relogin_once(self) -> None:
+        """Test concurrent requests with an expired token share one re-login."""
+        with aioresponses() as mock_api:
+            client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
+
+            mock_api.post("https://eservice.netzooe.at/service/j_security_check", status=200)
+            mock_api.get(
+                "https://eservice.netzooe.at/service/v1.0/session",
+                headers={"Set-Cookie": f"XSRF-TOKEN={MOCK_NEW_XSRF}; Path=/; Secure"},
+                status=200,
+            )
+            # Hold the first two responses back until both requests are in flight with the same expired token.
+            barrier: asyncio.Barrier = asyncio.Barrier(2)
+            calls: int = 0
+
+            async def dashboard(_url: URL, **_kwargs: object) -> CallbackResult:
+                nonlocal calls
+                calls += 1
+
+                if calls <= barrier.parties:
+                    await barrier.wait()
+                    return CallbackResult(status=401, payload={})
+
+                return CallbackResult(status=200, payload={})
+
+            mock_api.get("https://eservice.netzooe.at/service/v1.0/dashboard", callback=dashboard, repeat=4)
+
+            logins: int = len(recorded_calls(mock_api, "j_security_check"))
+
+            results = await asyncio.gather(client.dashboard(), client.dashboard())
+            assert results == [{}, {}]
+
+            assert len(recorded_calls(mock_api, "j_security_check")) == logins + 1
+            assert client.xsrf_token == MOCK_NEW_XSRF
+
+            await client.logout()
+
+    @pytest.mark.asyncio
     async def test_consumptions_profiles_without_branch(self) -> None:
         """Test getting the consumption profiles without passing a branch."""
         with aioresponses() as mock_api:
@@ -469,6 +510,24 @@ class TestUnhappyPathNetzOOEeServiceAPI:
             assert client.xsrf_token == ""
 
             assert mock_api.requests == snapshot
+
+    @pytest.mark.asyncio
+    async def test_session_without_xsrf_cookie(self) -> None:
+        """Test a session response without an XSRF cookie leaves the token empty."""
+        with aioresponses() as mock_api:
+            mock_api.post("https://eservice.netzooe.at/service/j_security_check", status=200)
+            mock_api.get("https://eservice.netzooe.at/service/v1.0/session", status=200)
+            mock_api.get("https://eservice.netzooe.at/service/logout", status=200)
+
+            client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(
+                username=MOCK_USERNAME,
+                password=MOCK_CREDENTIAL,
+            )
+
+            await client.login()
+            assert client.xsrf_token == ""
+
+            await client.logout()
 
     @pytest.mark.asyncio
     async def test_reconnect_failed(self) -> None:

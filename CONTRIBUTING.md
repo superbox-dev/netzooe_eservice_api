@@ -23,9 +23,10 @@ Pull requests are the best way to propose changes to the codebase.
 
 1. Fork the repo and create your branch from `develop`
 2. If you've changed something, update the documentation.
-3. Make sure your code lints with `./scripts/lint.sh`.
-4. Test your contribution.
-5. Issue that pull request!
+3. Add an entry under `## [Unreleased]` in `CHANGELOG.md` for every user-visible change.
+4. Make sure your code lints with `./scripts/lint.sh`.
+5. Test your contribution. 100% test coverage is required.
+6. Issue that pull request!
 
 ## Report bugs using Github's [issues](https://github.com/superbox-dev/netzooe_eservice_api/issues)
 
@@ -61,6 +62,12 @@ To test the code we use [pytest](https://docs.pytest.org):
 
 ```bash
 uv run pytest
+```
+
+If a test changes the recorded requests, regenerate the snapshots and review the diff:
+
+```bash
+uv run pytest --snapshot-update
 ```
 
 ## License

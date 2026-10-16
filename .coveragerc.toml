@@ -1,5 +1,5 @@
 [tool.coverage.run]
-branch = false
+branch = true
 source = ["netzooe_eservice_api"]
 
 [tool.coverage.report]

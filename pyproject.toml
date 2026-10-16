@@ -75,7 +75,6 @@ lint = [
     "ruff>=0.16.10",
     "rumdl>=0.2.78",
     "ty>=0.0.85",
-    "types-PyYAML>=6.0.12.20260906",
     "yamllint>=1.38.0",
 ]
 test = [
