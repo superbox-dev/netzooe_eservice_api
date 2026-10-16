@@ -1,12 +1,16 @@
+# Copyright 2026 Michael Hacker
+# SPDX-License-Identifier: Apache-2.0
 """Asynchronous client for the Netz OÖ eService API."""
 
 import re
 from http import HTTPStatus
 from json.decoder import JSONDecodeError
+from typing import TYPE_CHECKING
 from typing import Any
 from typing import Literal
 from typing import NotRequired
 from typing import TypedDict
+from typing import cast
 
 from aiohttp import ClientError
 from aiohttp import ClientSession
@@ -22,9 +26,33 @@ from netzooe_eservice_api.error import APIError
 from netzooe_eservice_api.error import AuthenticationError
 from netzooe_eservice_api.error import InvalidJsonError
 
+if TYPE_CHECKING:
+    from multidict import CIMultiDictProxy
+
+type JSONResponse = dict[str, Any] | list[dict[str, Any]]
+
 
 class Pod(TypedDict):
-    """Point of delivery data used by the eService API."""
+    """Point of delivery (POD) used to request a consumption profile.
+
+    Attributes
+    ----------
+    contract_account_number
+        Contract account number of the point of delivery.
+    energy_community_id
+        Optional ID of the energy community. Only sent if it is set.
+    profile_type
+        Profile type, e.g. from `consumptions_profiles()`.
+    best_available_granularity
+        Best available granularity of the measured values, e.g. from `consumptions_profiles()`.
+    meter_point_administration_number
+        Meter point administration number (Zählpunktnummer).
+    date_from
+        Start of the time range.
+    date_to
+        End of the time range.
+
+    """
 
     contract_account_number: str
     energy_community_id: NotRequired[str | None]
@@ -36,7 +64,11 @@ class Pod(TypedDict):
 
 
 class NetzOOEeServiceAPI:
-    """An asynchronous client to interact with the Netz OÖ eService API."""
+    """Asynchronous client for the Netz OÖ eService API.
+
+    The client logs in automatically on the first request and again once if the session has expired.
+
+    """
 
     def __init__(
         self,
@@ -45,25 +77,26 @@ class NetzOOEeServiceAPI:
         *,
         session: ClientSession | None = None,
     ) -> None:
-        """Initialize API with username and password.
+        """Initialize the API client.
 
         Parameters
         ----------
         username
-            eService username
+            Username of the eService portal.
         password
-            eService password
+            Password of the eService portal.
         session
-            Add an aiohttp client session
+            Optional aiohttp client session. A passed session is never closed by the client.
+            If no session is passed, the client creates its own and closes it on `logout()` and on errors.
 
         Examples
         --------
         >>> async with ClientSession() as session:
-        >>>     client = NetzOOEeServiceAPI(
-        >>>         username="test",
-        >>>         password="test",
-        >>>         session=session,
-        >>>     )
+        ...     client = NetzOOEeServiceAPI(
+        ...         username="test",
+        ...         password="test",
+        ...         session=session,
+        ...     )
 
         """
         self._username = username
@@ -86,7 +119,7 @@ class NetzOOEeServiceAPI:
 
     @property
     def headers(self) -> dict[str, str]:
-        """Default headers all API calls."""
+        """Headers for all API requests, including the current XSRF token."""
         return {
             **COMMON_HEADERS,
             "Content-Type": "application/json",
@@ -103,7 +136,7 @@ class NetzOOEeServiceAPI:
 
             self._set_xsrf_token(resp.headers)
 
-    def _set_xsrf_token(self, headers) -> None:  # type: ignore[no-untyped-def]  # noqa: ANN001
+    def _set_xsrf_token(self, headers: "CIMultiDictProxy[str]") -> None:
         cookies: list[str] = headers.getall("Set-Cookie", [])
         cookie_string: str = ";".join(cookies)
 
@@ -115,9 +148,9 @@ class NetzOOEeServiceAPI:
         method: Literal["GET", "POST"],
         url: str,
         *,
-        json: Any | None = None,
+        json: dict[str, Any] | None = None,
         retry: bool = True,
-    ) -> Any:
+    ) -> JSONResponse:
         session: ClientSession = await self._get_session()
         headers: dict[str, str] = self.headers.copy()
         message: str
@@ -148,14 +181,25 @@ class NetzOOEeServiceAPI:
             await self._close_session()
             raise APIError(str(error)) from error
 
-    async def _get(self, url: str) -> Any:
+    async def _get(self, url: str) -> JSONResponse:
         return await self._request("GET", url)
 
-    async def _post(self, url: str, /, *, json: Any) -> Any:
+    async def _post(self, url: str, /, *, json: dict[str, Any]) -> JSONResponse:
         return await self._request("POST", url, json=json)
 
     async def login(self) -> None:
-        """Authenticate to the Netz OÖ eService portal."""
+        """Log in to the eService portal and get a new XSRF token.
+
+        Calling this method is optional, the client logs in automatically on the first request.
+
+        Raises
+        ------
+        AuthenticationError
+            The credentials were rejected (HTTP 401).
+        APIError
+            Any other HTTP error, e.g. if the session could not be created.
+
+        """
         session: ClientSession = await self._get_session()
 
         async with session.post(
@@ -180,7 +224,11 @@ class NetzOOEeServiceAPI:
             await self._init_api_session()
 
     async def logout(self) -> None:
-        """Logout from the Netz OÖ eService portal."""
+        """Log out from the eService portal and reset the XSRF token.
+
+        If the client created its own session, the session is closed.
+
+        """
         session: ClientSession = await self._get_session()
 
         await session.get(
@@ -195,12 +243,58 @@ class NetzOOEeServiceAPI:
         await self._close_session()
 
     async def dashboard(self) -> dict[str, Any]:
-        """Get data from the eService dashboard."""
-        data: dict[str, Any] = await self._get(f"{ESERVICE_PORTAL_API}/dashboard")
+        """Get the dashboard data, e.g. business partners and contract accounts.
+
+        Returns
+        -------
+        dict[str, Any]
+            Raw JSON response of the dashboard.
+
+        Raises
+        ------
+        AuthenticationError
+            The credentials were rejected (HTTP 401), also after a new login.
+        InvalidJsonError
+            The response is not valid JSON, e.g. the maintenance page ("Wartungsseite").
+        APIError
+            Any other HTTP or connection error.
+
+        Examples
+        --------
+        >>> dashboard = await client.dashboard()
+        >>> dashboard["contractAccounts"]
+
+        """
+        data: dict[str, Any] = cast("dict[str, Any]", await self._get(f"{ESERVICE_PORTAL_API}/dashboard"))
         return data
 
     async def consents(self, status: list[ConsentsStatus] | ConsentsStatus | None = None, /) -> list[dict[str, Any]]:
-        """Get data from the eService data sharing."""
+        """Get the data sharing consents.
+
+        Parameters
+        ----------
+        status
+            Only return consents with this status or one of these statuses. Returns all consents if `None`.
+
+        Returns
+        -------
+        list[dict[str, Any]]
+            Raw JSON response of the consents.
+
+        Raises
+        ------
+        AuthenticationError
+            The credentials were rejected (HTTP 401), also after a new login.
+        InvalidJsonError
+            The response is not valid JSON, e.g. the maintenance page ("Wartungsseite").
+        APIError
+            Any other HTTP or connection error.
+
+        Examples
+        --------
+        >>> await client.consents([ConsentsStatus.ACTIVE, ConsentsStatus.ACTIVE_UNCHANGEABLE])
+
+        """
         _status: str = ""
 
         if status is not None and not isinstance(status, list):
@@ -210,13 +304,42 @@ class NetzOOEeServiceAPI:
             _status = ",".join([_.value for _ in status])
             _status = f"?status={_status}"
 
-        data: list[dict[str, Any]] = await self._get(f"{ESERVICE_PORTAL_API}/consents{_status}")
+        data: list[dict[str, Any]] = cast(
+            "list[dict[str, Any]]",
+            await self._get(f"{ESERVICE_PORTAL_API}/consents{_status}"),
+        )
         return data
 
     async def consumptions_profiles(
-        self, branch: list[ConsumptionsProfilesBranch] | ConsumptionsProfilesBranch | None
+        self,
+        branch: list[ConsumptionsProfilesBranch] | ConsumptionsProfilesBranch | None,
     ) -> list[dict[str, Any]]:
-        """Get data from the eService profiles."""
+        """Get the consumption profiles of all points of delivery.
+
+        Parameters
+        ----------
+        branch
+            Only return profiles of this branch or these branches. Returns all profiles if `None`.
+
+        Returns
+        -------
+        list[dict[str, Any]]
+            Raw JSON response of the consumption profiles.
+
+        Raises
+        ------
+        AuthenticationError
+            The credentials were rejected (HTTP 401), also after a new login.
+        InvalidJsonError
+            The response is not valid JSON, e.g. the maintenance page ("Wartungsseite").
+        APIError
+            Any other HTTP or connection error.
+
+        Examples
+        --------
+        >>> await client.consumptions_profiles(ConsumptionsProfilesBranch.ELECTRICITY)
+
+        """
         _branch: str = ""
 
         if branch is not None and not isinstance(branch, list):
@@ -226,42 +349,122 @@ class NetzOOEeServiceAPI:
             _branch = ",".join([_.value for _ in branch])
             _branch = f"?branch={_branch}"
 
-        data: list[dict[str, Any]] = await self._get(f"{ESERVICE_PORTAL_API}/consumptions/profiles{_branch}")
+        data: list[dict[str, Any]] = cast(
+            "list[dict[str, Any]]",
+            await self._get(f"{ESERVICE_PORTAL_API}/consumptions/profiles{_branch}"),
+        )
         return data
 
     async def contract_accounts(self, business_partner_number: str, contract_account_number: str) -> dict[str, Any]:
-        """Get data from the eService contract accounts."""
-        data: dict[str, Any] = await self._get(
-            f"{ESERVICE_PORTAL_API}/contract-accounts/{business_partner_number}/{contract_account_number}"
+        """Get the data of a contract account.
+
+        Parameters
+        ----------
+        business_partner_number
+            Business partner number, e.g. from `dashboard()`.
+        contract_account_number
+            Contract account number, e.g. from `dashboard()`.
+
+        Returns
+        -------
+        dict[str, Any]
+            Raw JSON response of the contract account.
+
+        Raises
+        ------
+        AuthenticationError
+            The credentials were rejected (HTTP 401), also after a new login.
+        InvalidJsonError
+            The response is not valid JSON, e.g. the maintenance page ("Wartungsseite").
+        APIError
+            Any other HTTP or connection error.
+
+        Examples
+        --------
+        >>> await client.contract_accounts(
+        ...     business_partner_number="1234567890",
+        ...     contract_account_number="123456789012",
+        ... )
+
+        """
+        data: dict[str, Any] = cast(
+            "dict[str, Any]",
+            await self._get(
+                f"{ESERVICE_PORTAL_API}/contract-accounts/{business_partner_number}/{contract_account_number}",
+            ),
         )
         return data
 
     async def consumptions_profile(
-        self, pods: list[Pod], dimension: ConsumptionsDimension = ConsumptionsDimension.ENERGY
+        self,
+        pods: list[Pod],
+        dimension: ConsumptionsDimension = ConsumptionsDimension.ENERGY,
     ) -> list[dict[str, Any]]:
-        """Get data from the eService consumptions profile."""
-        data: list[dict[str, Any]] = await self._post(
-            f"{ESERVICE_PORTAL_API}/consumptions/profile/active",
-            json={
-                "pods": [
-                    {
-                        "contractAccountNumber": pod["contract_account_number"],
-                        **(
-                            {"energyCommunityId": pod["energy_community_id"]}
-                            if pod.get("energy_community_id") is not None
-                            else {}
-                        ),
-                        "type": pod["profile_type"],
-                        "bestAvailableGranularity": pod["best_available_granularity"],
-                        "meterPointAdministrationNumber": pod["meter_point_administration_number"],
-                        "timerange": {
-                            "from": pod["date_from"],
-                            "to": pod["date_to"],
-                        },
-                    }
-                    for pod in pods
-                ],
-                "dimension": dimension.value,
-            },
+        """Get the consumption profile of one or more points of delivery.
+
+        Parameters
+        ----------
+        pods
+            Points of delivery and the time range to request.
+        dimension
+            Measurement dimension of the values.
+
+        Returns
+        -------
+        list[dict[str, Any]]
+            Raw JSON response of the consumption profile.
+
+        Raises
+        ------
+        AuthenticationError
+            The credentials were rejected (HTTP 401), also after a new login.
+        InvalidJsonError
+            The response is not valid JSON, e.g. the maintenance page ("Wartungsseite").
+        APIError
+            Any other HTTP or connection error.
+
+        Examples
+        --------
+        >>> await client.consumptions_profile(
+        ...     pods=[
+        ...         Pod(
+        ...             contract_account_number="123456789012",
+        ...             profile_type="...",
+        ...             best_available_granularity="...",
+        ...             meter_point_administration_number="AT0031000000000000000000000000000",
+        ...             date_from="...",
+        ...             date_to="...",
+        ...         ),
+        ...     ],
+        ...     dimension=ConsumptionsDimension.ENERGY,
+        ... )
+
+        """
+        data: list[dict[str, Any]] = cast(
+            "list[dict[str, Any]]",
+            await self._post(
+                f"{ESERVICE_PORTAL_API}/consumptions/profile/active",
+                json={
+                    "pods": [
+                        {
+                            "contractAccountNumber": pod["contract_account_number"],
+                            **(
+                                {"energyCommunityId": pod["energy_community_id"]}
+                                if pod.get("energy_community_id") is not None
+                                else {}
+                            ),
+                            "type": pod["profile_type"],
+                            "bestAvailableGranularity": pod["best_available_granularity"],
+                            "meterPointAdministrationNumber": pod["meter_point_administration_number"],
+                            "timerange": {
+                                "from": pod["date_from"],
+                                "to": pod["date_to"],
+                            },
+                        }
+                        for pod in pods
+                    ],
+                    "dimension": dimension.value,
+                },
+            ),
         )
         return data

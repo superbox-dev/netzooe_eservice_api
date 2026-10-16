@@ -1,10 +1,12 @@
-"""KEBA KeEnergy API error classes."""
+# Copyright 2026 Michael Hacker
+# SPDX-License-Identifier: Apache-2.0
+"""Netz OÖ eService API error classes."""
 
 from http import HTTPStatus
 
 
 class APIError(Exception):
-    """API error."""
+    """Base error of the Netz OÖ eService API, e.g. for HTTP and connection errors."""
 
     def __init__(
         self,
@@ -13,7 +15,16 @@ class APIError(Exception):
         *,
         status: HTTPStatus | None = None,
     ) -> None:
-        """Initialize an API error with an optional HTTP status."""
+        """Initialize an API error.
+
+        Parameters
+        ----------
+        message
+            Error message. Is replaced by the HTTP status description if a status is given.
+        status
+            HTTP status associated with the error.
+
+        """
         _message: str = message
 
         if status:
@@ -28,8 +39,8 @@ class APIError(Exception):
 
 
 class InvalidJsonError(APIError):
-    """Invalid JSON data error."""
+    """The response of the eService portal is not valid JSON, e.g. the maintenance page."""
 
 
 class AuthenticationError(APIError):
-    """Invalid credentials error."""
+    """The credentials were rejected by the eService portal (HTTP 401)."""

@@ -1,3 +1,5 @@
+# Copyright 2026 Michael Hacker
+# SPDX-License-Identifier: Apache-2.0
 """Constants used by the Netz OÖ eService API."""
 
 from enum import Enum
@@ -13,7 +15,7 @@ COMMON_HEADERS: dict[str, str] = {
 
 
 class ConsentsStatus(Enum):
-    """Consent status values."""
+    """Status of a data sharing consent, used by `NetzOOEeServiceAPI.consents()`."""
 
     ACTIVE = "ACTIVE"
     ACTIVE_UNCHANGEABLE = "ACTIVE_UNCHANGEABLE"
@@ -21,20 +23,20 @@ class ConsentsStatus(Enum):
 
 
 class ConsumptionsProfilesBranch(Enum):
-    """Consumption profile branch values."""
+    """Branch of a consumption profile, used by `NetzOOEeServiceAPI.consumptions_profiles()`."""
 
     ELECTRICITY = "STROM"
 
 
 class SynthProfile(Enum):
-    """Synthetic profile types."""
+    """Type of a synthetic load profile."""
 
     HOUSEHOLD = "Haushalt"
     PHOTOVOLTAICS = "Photovoltaik"
 
 
 class ConsumptionsDimension(Enum):
-    """Consumption measurement dimensions."""
+    """Measurement dimension, used by `NetzOOEeServiceAPI.consumptions_profile()`."""
 
     ENERGY = "ENERGY"
     POWER = "POWER"

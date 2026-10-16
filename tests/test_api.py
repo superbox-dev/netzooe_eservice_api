@@ -1,3 +1,7 @@
+# Copyright 2026 Michael Hacker
+# SPDX-License-Identifier: Apache-2.0
+"""Tests for the Netz OÖ eService API client."""
+
 from typing import Any
 
 import pytest
@@ -14,8 +18,13 @@ from netzooe_eservice_api.error import APIError
 from netzooe_eservice_api.error import AuthenticationError
 from netzooe_eservice_api.error import InvalidJsonError
 
+MOCK_USERNAME: str = "test"
+MOCK_CREDENTIAL: str = "test"
+MOCK_XSRF: str = "mocked-token-value"
+
 
 async def create_client(mock_api: aioresponses, /, *, repeat: bool | int = False) -> NetzOOEeServiceAPI:
+    """Create a client with mocked login, session and logout endpoints."""
     mock_api.post(
         "https://eservice.netzooe.at/service/j_security_check",
         status=200,
@@ -38,14 +47,15 @@ async def create_client(mock_api: aioresponses, /, *, repeat: bool | int = False
     )
 
     client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(
-        username="test",
-        password="test",  # noqa: S106
+        username=MOCK_USERNAME,
+        password=MOCK_CREDENTIAL,
     )
 
     return client
 
 
 async def create_logged_in_client(mock_api: aioresponses, /, *, repeat: bool | int = False) -> NetzOOEeServiceAPI:
+    """Create a client with mocked endpoints and log in."""
     client: NetzOOEeServiceAPI = await create_client(mock_api, repeat=repeat)
 
     await client.login()
@@ -53,12 +63,15 @@ async def create_logged_in_client(mock_api: aioresponses, /, *, repeat: bool | i
 
 
 class TestHappyPathNetzOOEeServiceAPI:
+    """Tests for successful API calls."""
+
     @pytest.mark.asyncio
     async def test_login(self, snapshot: SnapshotAssertion) -> None:
+        """Test login and logout set and reset the XSRF token."""
         with aioresponses() as mock_api:
             client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
 
-            assert client.xsrf_token == "mocked-token-value"  # noqa: S105
+            assert client.xsrf_token == MOCK_XSRF
             await client.logout()
             assert client.xsrf_token == ""
 
@@ -66,6 +79,7 @@ class TestHappyPathNetzOOEeServiceAPI:
 
     @pytest.mark.asyncio
     async def test_reconnect(self, snapshot: SnapshotAssertion) -> None:
+        """Test a request logs in again after a 401 response."""
         with aioresponses() as mock_api:
             client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api, repeat=2)
 
@@ -80,6 +94,7 @@ class TestHappyPathNetzOOEeServiceAPI:
 
     @pytest.mark.asyncio
     async def test_dashboard(self, snapshot: SnapshotAssertion) -> None:
+        """Test getting the dashboard data."""
         with aioresponses() as mock_api:
             client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
 
@@ -93,6 +108,7 @@ class TestHappyPathNetzOOEeServiceAPI:
 
     @pytest.mark.asyncio
     async def test_dashboard_without_login(self, snapshot: SnapshotAssertion) -> None:
+        """Test a request logs in automatically without a prior login."""
         with aioresponses() as mock_api:
             client: NetzOOEeServiceAPI = await create_client(mock_api)
 
@@ -122,8 +138,12 @@ class TestHappyPathNetzOOEeServiceAPI:
         ],
     )
     async def test_consents(
-        self, snapshot: SnapshotAssertion, status: list[ConsentsStatus] | ConsentsStatus | None, url: str
+        self,
+        snapshot: SnapshotAssertion,
+        status: list[ConsentsStatus] | ConsentsStatus | None,
+        url: str,
     ) -> None:
+        """Test getting the consents with different status filters."""
         with aioresponses() as mock_api:
             client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
 
@@ -155,6 +175,7 @@ class TestHappyPathNetzOOEeServiceAPI:
         branch: list[ConsumptionsProfilesBranch] | ConsumptionsProfilesBranch | None,
         url: str,
     ) -> None:
+        """Test getting the consumption profiles with different branch filters."""
         with aioresponses() as mock_api:
             client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
 
@@ -168,6 +189,7 @@ class TestHappyPathNetzOOEeServiceAPI:
 
     @pytest.mark.asyncio
     async def test_contract_account(self, snapshot: SnapshotAssertion) -> None:
+        """Test getting the contract account data."""
         with aioresponses() as mock_api:
             client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
 
@@ -193,7 +215,7 @@ class TestHappyPathNetzOOEeServiceAPI:
                         meter_point_administration_number="AT123",
                         date_from="2026-01-01",
                         date_to="2026-01-30",
-                    )
+                    ),
                 ],
                 ConsumptionsDimension.ENERGY,
             ),
@@ -206,20 +228,26 @@ class TestHappyPathNetzOOEeServiceAPI:
                         meter_point_administration_number="AT123",
                         date_from="2026-01-01",
                         date_to="2026-01-30",
-                    )
+                    ),
                 ],
                 ConsumptionsDimension.ENERGY,
             ),
         ],
     )
     async def test_consumptions_profile(
-        self, snapshot: SnapshotAssertion, pods: list[Pod], dimension: ConsumptionsDimension
+        self,
+        snapshot: SnapshotAssertion,
+        pods: list[Pod],
+        dimension: ConsumptionsDimension,
     ) -> None:
+        """Test getting the consumption profile for points of delivery."""
         with aioresponses() as mock_api:
             client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
 
             mock_api.post(
-                "https://eservice.netzooe.at/service/v1.0/consumptions/profile/active", status=200, payload=[]
+                "https://eservice.netzooe.at/service/v1.0/consumptions/profile/active",
+                status=200,
+                payload=[],
             )
 
             result: list[dict[str, Any]] = await client.consumptions_profile(pods=pods, dimension=dimension)
@@ -230,6 +258,8 @@ class TestHappyPathNetzOOEeServiceAPI:
 
 
 class TestUnhappyPathNetzOOEeServiceAPI:
+    """Tests for failing API calls."""
+
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
         ("exception", "status", "message"),
@@ -247,8 +277,13 @@ class TestUnhappyPathNetzOOEeServiceAPI:
         ],
     )
     async def test_login_failed(
-        self, snapshot: SnapshotAssertion, exception: type[APIError], status: int, message: str
+        self,
+        snapshot: SnapshotAssertion,
+        exception: type[APIError],
+        status: int,
+        message: str,
     ) -> None:
+        """Test a failed login raises the matching error."""
         with aioresponses() as mock_api:
             mock_api.post(
                 "https://eservice.netzooe.at/service/j_security_check",
@@ -256,8 +291,8 @@ class TestUnhappyPathNetzOOEeServiceAPI:
             )
 
             client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(
-                username="test",
-                password="test",  # noqa: S106
+                username=MOCK_USERNAME,
+                password=MOCK_CREDENTIAL,
             )
 
             with pytest.raises(exception) as error:
@@ -270,6 +305,7 @@ class TestUnhappyPathNetzOOEeServiceAPI:
 
     @pytest.mark.asyncio
     async def test_session_failed(self, snapshot: SnapshotAssertion) -> None:
+        """Test a failed session request raises an API error."""
         with aioresponses() as mock_api:
             mock_api.post(
                 "https://eservice.netzooe.at/service/j_security_check",
@@ -282,8 +318,8 @@ class TestUnhappyPathNetzOOEeServiceAPI:
             )
 
             client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(
-                username="test",
-                password="test",  # noqa: S106
+                username=MOCK_USERNAME,
+                password=MOCK_CREDENTIAL,
             )
 
             with pytest.raises(APIError) as error:
@@ -296,6 +332,7 @@ class TestUnhappyPathNetzOOEeServiceAPI:
 
     @pytest.mark.asyncio
     async def test_reconnect_failed(self) -> None:
+        """Test a second 401 response raises an authentication error."""
         with aioresponses() as mock_api:
             client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api, repeat=2)
 
@@ -308,6 +345,7 @@ class TestUnhappyPathNetzOOEeServiceAPI:
 
     @pytest.mark.asyncio
     async def test_client_error(self) -> None:
+        """Test an aiohttp client error is raised as an API error."""
         with aioresponses() as mock_api:
             client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
 
@@ -323,6 +361,7 @@ class TestUnhappyPathNetzOOEeServiceAPI:
 
     @pytest.mark.asyncio
     async def test_internal_server_error(self) -> None:
+        """Test an internal server error is raised as an API error."""
         with aioresponses() as mock_api:
             client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
 
@@ -351,6 +390,7 @@ class TestUnhappyPathNetzOOEeServiceAPI:
         ],
     )
     async def test_maintenance_page(self, body: str, content_type: str) -> None:
+        """Test a maintenance page response raises an invalid JSON error."""
         with aioresponses() as mock_api:
             client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
 
