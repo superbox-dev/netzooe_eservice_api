@@ -45,6 +45,11 @@ def _enum_query(name: str, value: Sequence[Enum] | Enum | None) -> str:
     return f"?{name}={','.join(member.value for member in values)}"
 
 
+def _client_error(error: ClientError | TimeoutError, /) -> APIError:
+    """Map an aiohttp client error or a timeout to an `APIError`."""
+    return APIError(str(error) or type(error).__name__)
+
+
 class Pod(TypedDict):
     """Point of delivery (POD) used to request a consumption profile.
 
@@ -130,6 +135,9 @@ class NetzOOEeServiceAPI:
         return self._session
 
     async def _close_session(self) -> None:
+        # The token belongs to the closed session, the next request has to log in again.
+        self.xsrf_token = ""
+
         if self._custom_session and self._session and not self._session.closed:
             await self._session.close()
 
@@ -150,14 +158,20 @@ class NetzOOEeServiceAPI:
                 await self._close_session()
                 raise APIError(status=resp.status)
 
-            self._set_xsrf_token(resp.headers)
+            if not self._set_xsrf_token(resp.headers):
+                await self._close_session()
+                message: str = "The session response contains no XSRF token"
+                raise APIError(message)
 
-    def _set_xsrf_token(self, headers: "CIMultiDictProxy[str]") -> None:
+    def _set_xsrf_token(self, headers: "CIMultiDictProxy[str]") -> bool:
         cookies: list[str] = headers.getall("Set-Cookie", [])
         cookie_string: str = ";".join(cookies)
 
         if match := re.search(r"XSRF-TOKEN=([^;]+)", cookie_string):
             self.xsrf_token = match.group(1)
+            return True
+
+        return False
 
     async def _request(
         self,
@@ -184,20 +198,21 @@ class NetzOOEeServiceAPI:
                     except (JSONDecodeError, ContentTypeError) as error:
                         message = await resp.text()
                         raise InvalidJsonError(message, status=resp.status) from error
-                if resp.status == HTTPStatus.UNAUTHORIZED:
-                    if retry:
-                        await self._relogin(expired_token=used_token)
-                        return await self._request(method, url, json=json, retry=False)
+                if resp.status != HTTPStatus.UNAUTHORIZED:
+                    message = await resp.text()
+                    raise APIError(message, status=resp.status)
 
-                    await self._close_session()
+            # Log in again after the 401 response is released, so it does not hold a connection of the session.
+            if retry:
+                await self._relogin(expired_token=used_token)
+                return await self._request(method, url, json=json, retry=False)
 
-                    raise AuthenticationError(status=HTTPStatus.UNAUTHORIZED)
+            await self._close_session()
 
-                message = await resp.text()
-                raise APIError(message, status=resp.status)
+            raise AuthenticationError(status=HTTPStatus.UNAUTHORIZED)
         except (ClientError, TimeoutError) as error:
             await self._close_session()
-            raise APIError(str(error) or type(error).__name__) from error
+            raise _client_error(error) from error
 
     async def _relogin(self, *, expired_token: str) -> None:
         # Concurrent requests share one login. Skip it if another request already got a new token.
@@ -221,7 +236,7 @@ class NetzOOEeServiceAPI:
         AuthenticationError
             The credentials were rejected (HTTP 401).
         APIError
-            Any other HTTP or connection error, e.g. if the session could not be created.
+            Any other HTTP or connection error, or the session response contains no XSRF token.
 
         """
         session: ClientSession = await self._get_session()
@@ -249,7 +264,7 @@ class NetzOOEeServiceAPI:
                 await self._init_api_session()
         except (ClientError, TimeoutError) as error:
             await self._close_session()
-            raise APIError(str(error) or type(error).__name__) from error
+            raise _client_error(error) from error
 
     async def logout(self) -> None:
         """Log out from the eService portal and reset the XSRF token.
@@ -260,7 +275,7 @@ class NetzOOEeServiceAPI:
         Raises
         ------
         APIError
-            Connection error during the logout request.
+            The logout request failed with an HTTP or connection error.
 
         """
         try:
@@ -270,10 +285,12 @@ class NetzOOEeServiceAPI:
                     headers={
                         **COMMON_HEADERS,
                     },
-                ):
-                    pass
+                ) as resp:
+                    if not resp.ok:
+                        message: str = await resp.text()
+                        raise APIError(message, status=resp.status)
         except (ClientError, TimeoutError) as error:
-            raise APIError(str(error) or type(error).__name__) from error
+            raise _client_error(error) from error
         finally:
             self.xsrf_token = ""
             await self._close_session()
@@ -301,8 +318,7 @@ class NetzOOEeServiceAPI:
         >>> dashboard["contractAccounts"]
 
         """
-        data: dict[str, Any] = cast("dict[str, Any]", await self._get(f"{ESERVICE_PORTAL_API}/dashboard"))
-        return data
+        return cast("dict[str, Any]", await self._get(f"{ESERVICE_PORTAL_API}/dashboard"))
 
     async def consents(self, status: list[ConsentsStatus] | ConsentsStatus | None = None, /) -> list[dict[str, Any]]:
         """Get the data sharing consents.
@@ -331,11 +347,10 @@ class NetzOOEeServiceAPI:
         >>> await client.consents([ConsentsStatus.ACTIVE, ConsentsStatus.ACTIVE_UNCHANGEABLE])
 
         """
-        data: list[dict[str, Any]] = cast(
+        return cast(
             "list[dict[str, Any]]",
             await self._get(f"{ESERVICE_PORTAL_API}/consents{_enum_query('status', status)}"),
         )
-        return data
 
     async def consumptions_profiles(
         self,
@@ -367,11 +382,10 @@ class NetzOOEeServiceAPI:
         >>> await client.consumptions_profiles(ConsumptionsProfilesBranch.ELECTRICITY)
 
         """
-        data: list[dict[str, Any]] = cast(
+        return cast(
             "list[dict[str, Any]]",
             await self._get(f"{ESERVICE_PORTAL_API}/consumptions/profiles{_enum_query('branch', branch)}"),
         )
-        return data
 
     async def contract_accounts(self, business_partner_number: str, contract_account_number: str) -> dict[str, Any]:
         """Get the data of a contract account.
@@ -405,14 +419,13 @@ class NetzOOEeServiceAPI:
         ... )
 
         """
-        data: dict[str, Any] = cast(
+        return cast(
             "dict[str, Any]",
             await self._get(
                 f"{ESERVICE_PORTAL_API}/contract-accounts/"
-                f"{quote(business_partner_number, safe='')}/{quote(contract_account_number, safe='')}",
+                f"{quote(str(business_partner_number), safe='')}/{quote(str(contract_account_number), safe='')}",
             ),
         )
-        return data
 
     async def consumptions_profile(
         self,
@@ -459,7 +472,7 @@ class NetzOOEeServiceAPI:
         ... )
 
         """
-        data: list[dict[str, Any]] = cast(
+        return cast(
             "list[dict[str, Any]]",
             await self._post(
                 f"{ESERVICE_PORTAL_API}/consumptions/profile/active",
@@ -486,4 +499,3 @@ class NetzOOEeServiceAPI:
                 },
             ),
         )
-        return data

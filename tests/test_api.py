@@ -3,6 +3,10 @@
 """Tests for the Netz OÖ eService API client."""
 
 import asyncio
+import gc
+import warnings
+from collections.abc import Awaitable
+from collections.abc import Callable
 from typing import Any
 
 import pytest
@@ -36,17 +40,19 @@ def recorded_calls(mock_api: aioresponses, url_part: str, /) -> list[RequestCall
     return [call for (_, url), calls in mock_api.requests.items() if url_part in str(url) for call in calls]
 
 
-def record_created_sessions(monkeypatch: pytest.MonkeyPatch, /) -> list[ClientSession]:
-    """Record every session the client creates on its own."""
-    created: list[ClientSession] = []
+async def count_unclosed_sessions(scenario: Callable[[aioresponses], Awaitable[None]], /) -> int:
+    """Run `scenario` with mocked HTTP and count the sessions that are garbage collected without being closed."""
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always", ResourceWarning)
 
-    def create_session() -> ClientSession:
-        session: ClientSession = ClientSession()
-        created.append(session)
-        return session
+        with aioresponses() as mock_api:
+            await scenario(mock_api)
 
-    monkeypatch.setattr("netzooe_eservice_api.api.ClientSession", create_session)
-    return created
+        # The recorded calls of aioresponses keep the sessions alive.
+        del mock_api
+        gc.collect()
+
+    return sum("Unclosed client session" in str(warning.message) for warning in caught)
 
 
 async def create_client(mock_api: aioresponses, /, *, repeat: bool | int = False) -> NetzOOEeServiceAPI:
@@ -384,6 +390,24 @@ class TestHappyPathNetzOOEeServiceAPI:
             await client.logout()
 
     @pytest.mark.asyncio
+    async def test_contract_account_not_str(self) -> None:
+        """Test the path parameters of the contract account still accept values that are not strings."""
+        with aioresponses() as mock_api:
+            client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
+
+            mock_api.get("https://eservice.netzooe.at/service/v1.0/contract-accounts/123/345", status=200, payload={})
+
+            business_partner_number: Any = 123
+            contract_account_number: Any = 345
+
+            result = await client.contract_accounts(
+                business_partner_number=business_partner_number,
+                contract_account_number=contract_account_number,
+            )
+            assert result == {}
+            await client.logout()
+
+    @pytest.mark.asyncio
     async def test_logout_without_session(self) -> None:
         """Test logout without a session sends no request and resets the XSRF token."""
         with aioresponses() as mock_api:
@@ -414,15 +438,15 @@ class TestHappyPathNetzOOEeServiceAPI:
                 assert not session.closed
 
     @pytest.mark.asyncio
-    async def test_passed_closed_session(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_passed_closed_session(self) -> None:
         """Test a passed but closed session is replaced by an own session that is closed on logout."""
-        with aioresponses() as mock_api:
+
+        async def scenario(mock_api: aioresponses) -> None:
             create_client_mocks: NetzOOEeServiceAPI = await create_client(mock_api)
             del create_client_mocks
 
             session: ClientSession = ClientSession()
             await session.close()
-            created: list[ClientSession] = record_created_sessions(monkeypatch)
 
             client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(
                 username=MOCK_USERNAME,
@@ -430,12 +454,11 @@ class TestHappyPathNetzOOEeServiceAPI:
                 session=session,
             )
             await client.login()
-
-            assert len(created) == 1
-            assert created[0] is not session
+            assert client.xsrf_token == MOCK_XSRF
 
             await client.logout()
-            assert created[0].closed
+
+        assert await count_unclosed_sessions(scenario) == 0
 
 
 class TestUnhappyPathNetzOOEeServiceAPI:
@@ -513,21 +536,24 @@ class TestUnhappyPathNetzOOEeServiceAPI:
 
     @pytest.mark.asyncio
     async def test_session_without_xsrf_cookie(self) -> None:
-        """Test a session response without an XSRF cookie leaves the token empty."""
-        with aioresponses() as mock_api:
+        """Test a session response without an XSRF cookie raises an API error and closes the own session."""
+
+        async def scenario(mock_api: aioresponses) -> None:
             mock_api.post("https://eservice.netzooe.at/service/j_security_check", status=200)
             mock_api.get("https://eservice.netzooe.at/service/v1.0/session", status=200)
-            mock_api.get("https://eservice.netzooe.at/service/logout", status=200)
 
             client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(
                 username=MOCK_USERNAME,
                 password=MOCK_CREDENTIAL,
             )
 
-            await client.login()
+            with pytest.raises(APIError) as error:
+                await client.login()
+
+            assert str(error.value) == "The session response contains no XSRF token"
             assert client.xsrf_token == ""
 
-            await client.logout()
+        assert await count_unclosed_sessions(scenario) == 0
 
     @pytest.mark.asyncio
     async def test_reconnect_failed(self) -> None:
@@ -557,6 +583,30 @@ class TestUnhappyPathNetzOOEeServiceAPI:
                 await client.dashboard()
 
             assert str(error.value) == "mocked error"
+
+    @pytest.mark.asyncio
+    async def test_login_again_after_client_error(self) -> None:
+        """Test the next request after a client error logs in again on the new session."""
+        with aioresponses() as mock_api:
+            client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api, repeat=2)
+
+            mock_api.get(
+                "https://eservice.netzooe.at/service/v1.0/dashboard",
+                exception=ClientError("mocked error"),
+            )
+            mock_api.get("https://eservice.netzooe.at/service/v1.0/dashboard", status=200, payload={})
+
+            with pytest.raises(APIError):
+                await client.dashboard()
+
+            assert client.xsrf_token == ""
+            logins: int = len(recorded_calls(mock_api, "j_security_check"))
+
+            result = await client.dashboard()
+            assert result == {}
+
+            assert len(recorded_calls(mock_api, "j_security_check")) == logins + 1
+            await client.logout()
 
     @pytest.mark.asyncio
     async def test_internal_server_error(self) -> None:
@@ -663,10 +713,35 @@ class TestUnhappyPathNetzOOEeServiceAPI:
             assert str(error.value) == "mocked error"
 
     @pytest.mark.asyncio
-    async def test_logout_client_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_logout_failed(self) -> None:
+        """Test a failed logout request raises an API error and still resets the client."""
+
+        async def scenario(mock_api: aioresponses) -> None:
+            mock_api.post("https://eservice.netzooe.at/service/j_security_check", status=200)
+            mock_api.get(
+                "https://eservice.netzooe.at/service/v1.0/session",
+                headers={"Set-Cookie": "XSRF-TOKEN=mocked-token-value; Path=/; Secure"},
+                status=200,
+            )
+            mock_api.get("https://eservice.netzooe.at/service/logout", status=500, body="mocked body")
+
+            client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(username=MOCK_USERNAME, password=MOCK_CREDENTIAL)
+            await client.login()
+
+            with pytest.raises(APIError) as error:
+                await client.logout()
+
+            assert str(error.value) == "500 Internal Server Error: Server got itself in trouble"
+            assert error.value.detail == "mocked body"
+            assert client.xsrf_token == ""
+
+        assert await count_unclosed_sessions(scenario) == 0
+
+    @pytest.mark.asyncio
+    async def test_logout_client_error(self) -> None:
         """Test an aiohttp client error on logout is raised as an API error and still resets the client."""
-        with aioresponses() as mock_api:
-            created: list[ClientSession] = record_created_sessions(monkeypatch)
+
+        async def scenario(mock_api: aioresponses) -> None:
             client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(username=MOCK_USERNAME, password=MOCK_CREDENTIAL)
 
             mock_api.post("https://eservice.netzooe.at/service/j_security_check", status=200)
@@ -684,4 +759,5 @@ class TestUnhappyPathNetzOOEeServiceAPI:
 
             assert str(error.value) == "mocked error"
             assert client.xsrf_token == ""
-            assert created[0].closed
+
+        assert await count_unclosed_sessions(scenario) == 0

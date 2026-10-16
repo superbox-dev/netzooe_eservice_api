@@ -17,9 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added the `Apache-2.0` license expression and the `Typing :: Typed` / `Framework :: AsyncIO` classifiers
   to the package metadata
-- The `branch` argument of `consumptions_profiles()` is now optional and defaults to `None`
-- Concurrent requests without a valid session now share a single login
-- `logout()` no longer sends a request if the client has no open session
+- Made the `branch` argument of `consumptions_profiles()` optional with a default of `None`
+- Changed concurrent requests without a valid session to share a single login
+- Stopped `logout()` from sending a request if the client has no open session
+- Changed `login()` to raise `APIError` if the session response contains no `XSRF-TOKEN` cookie, instead of
+  succeeding with an empty XSRF token
+- Changed `logout()` to raise `APIError` if the logout request fails with an HTTP error, the XSRF token is still
+  reset and the own session is still closed
 
 ### Fixed
 
@@ -30,7 +34,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed `logout()` not releasing the response of the logout request
 - Fixed a session leak when a closed `session` was passed to `NetzOOEeServiceAPI()`
 - URL encoded the path parameters of `contract_accounts()`
-- `APIError` now passes its message to `Exception`, so `args` and `repr()` contain the message
+- Changed `APIError` to pass its message to `Exception`, so `args` and `repr()` contain the message
+- Fixed requests after a connection error or timeout being sent with the XSRF token of the closed session instead
+  of logging in again
+- Fixed the re-login after a `401` response holding a connection of the session until the retry finished
 
 ## [1.1.1] - 2026-08-12
 
