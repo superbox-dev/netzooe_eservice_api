@@ -12,6 +12,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added the `detail` attribute to `APIError` with the original message, e.g. the response body or the content of the
   maintenance page
 - Exported `NetzOOEeServiceAPI`, `Pod`, the enums and the exceptions from the `netzooe_eservice_api` package
+- Added `dashboard_headers()` to get a short overview of the contract accounts with their contracts and points of
+  delivery, optionally filtered by `branch` and `active_only`
+- Added `consent_requests()` and the `ConsentRequestsStatus` enum to get the data sharing consent requests
+- Added the optional `active_only` argument to `consumptions_profiles()`
+- Added the `REQUESTED`, `QR_CODE_SENT`, `TIMEOUT` and `CONCLUDED` members to `ConsentsStatus`
+- Added the `GAS` member to `ConsumptionsProfilesBranch`
+- Added the `VOLUME` member to `ConsumptionsDimension`
+- Added the `Granularity` and `ProfileType` enums, `Pod` accepts them for `best_available_granularity` and
+  `profile_type` in addition to strings
 
 ### Changed
 

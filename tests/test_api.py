@@ -20,9 +20,12 @@ from yarl import URL
 
 from netzooe_eservice_api.api import NetzOOEeServiceAPI
 from netzooe_eservice_api.api import Pod
+from netzooe_eservice_api.constants import ConsentRequestsStatus
 from netzooe_eservice_api.constants import ConsentsStatus
 from netzooe_eservice_api.constants import ConsumptionsDimension
 from netzooe_eservice_api.constants import ConsumptionsProfilesBranch
+from netzooe_eservice_api.constants import Granularity
+from netzooe_eservice_api.constants import ProfileType
 from netzooe_eservice_api.error import APIError
 from netzooe_eservice_api.error import AuthenticationError
 from netzooe_eservice_api.error import InvalidJsonError
@@ -154,6 +157,50 @@ class TestHappyPathNetzOOEeServiceAPI:
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
+        ("branch", "active_only", "url"),
+        [
+            (
+                None,
+                None,
+                "https://eservice.netzooe.at/service/v1.0/dashboard/headers",
+            ),
+            (
+                ConsumptionsProfilesBranch.ELECTRICITY,
+                True,
+                "https://eservice.netzooe.at/service/v1.0/dashboard/headers?branch=STROM&activeOnly=true",
+            ),
+            (
+                [
+                    ConsumptionsProfilesBranch.ELECTRICITY,
+                    ConsumptionsProfilesBranch.GAS,
+                ],
+                False,
+                "https://eservice.netzooe.at/service/v1.0/dashboard/headers?branch=STROM,GAS&activeOnly=false",
+            ),
+        ],
+    )
+    async def test_dashboard_headers(
+        self,
+        *,
+        snapshot: SnapshotAssertion,
+        branch: list[ConsumptionsProfilesBranch] | ConsumptionsProfilesBranch | None,
+        active_only: bool | None,
+        url: str,
+    ) -> None:
+        """Test getting the dashboard headers with different branch and active filters."""
+        with aioresponses() as mock_api:
+            client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
+
+            mock_api.get(url, status=200, payload=[])
+
+            result: list[dict[str, Any]] = await client.dashboard_headers(branch, active_only=active_only)
+            assert result == []
+            await client.logout()
+
+            assert mock_api.requests == snapshot
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
         ("status", "url"),
         [
             (
@@ -189,6 +236,45 @@ class TestHappyPathNetzOOEeServiceAPI:
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
+        ("status", "url"),
+        [
+            (
+                None,
+                "https://eservice.netzooe.at/service/v1.0/consent-requests",
+            ),
+            (
+                ConsentRequestsStatus.CONFIRMED,
+                "https://eservice.netzooe.at/service/v1.0/consent-requests?status=CONFIRMED",
+            ),
+            (
+                [
+                    ConsentRequestsStatus.INITIAL,
+                    ConsentRequestsStatus.SENT,
+                ],
+                "https://eservice.netzooe.at/service/v1.0/consent-requests?status=INITIAL,SENT",
+            ),
+        ],
+    )
+    async def test_consent_requests(
+        self,
+        snapshot: SnapshotAssertion,
+        status: list[ConsentRequestsStatus] | ConsentRequestsStatus | None,
+        url: str,
+    ) -> None:
+        """Test getting the consent requests with different status filters."""
+        with aioresponses() as mock_api:
+            client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
+
+            mock_api.get(url, status=200, payload=[])
+
+            result: list[dict[str, Any]] = await client.consent_requests(status)
+            assert result == []
+            await client.logout()
+
+            assert mock_api.requests == snapshot
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
         ("branch", "url"),
         [
             (
@@ -214,6 +300,27 @@ class TestHappyPathNetzOOEeServiceAPI:
             mock_api.get(url, status=200, payload=[])
 
             result: list[dict[str, Any]] = await client.consumptions_profiles(branch)
+            assert result == []
+            await client.logout()
+
+            assert mock_api.requests == snapshot
+
+    @pytest.mark.asyncio
+    async def test_consumptions_profiles_active_only(self, snapshot: SnapshotAssertion) -> None:
+        """Test getting only the consumption profiles of active points of delivery."""
+        with aioresponses() as mock_api:
+            client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
+
+            mock_api.get(
+                "https://eservice.netzooe.at/service/v1.0/consumptions/profiles?branch=STROM&activeOnly=true",
+                status=200,
+                payload=[],
+            )
+
+            result: list[dict[str, Any]] = await client.consumptions_profiles(
+                ConsumptionsProfilesBranch.ELECTRICITY,
+                active_only=True,
+            )
             assert result == []
             await client.logout()
 
@@ -263,6 +370,19 @@ class TestHappyPathNetzOOEeServiceAPI:
                     ),
                 ],
                 ConsumptionsDimension.ENERGY,
+            ),
+            (
+                [
+                    Pod(
+                        contract_account_number="123",
+                        profile_type=ProfileType.ACTIVE_CURRENT,
+                        best_available_granularity=Granularity.QUARTER_OF_AN_HOUR,
+                        meter_point_administration_number="AT123",
+                        date_from="2026-01-01",
+                        date_to="2026-01-30",
+                    ),
+                ],
+                ConsumptionsDimension.POWER,
             ),
         ],
     )

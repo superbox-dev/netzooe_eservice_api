@@ -37,6 +37,13 @@ async def main():
                 contract_account_number=dashboard_contract_accounts["contractAccountNumber"],
             )
 
+        # Get a short overview of the active contract accounts, e.g. the meter point administration numbers
+        dashboard_headers: list[dict[str, Any]] = await client.dashboard_headers(active_only=True)
+
+        for dashboard_header in dashboard_headers:
+            for contract in dashboard_header["contracts"]:
+                print(contract["meterPointAdministrationNumber"])
+
 
 asyncio.run(main())
 ```

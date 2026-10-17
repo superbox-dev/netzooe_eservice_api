@@ -23,9 +23,12 @@ from aiohttp import ContentTypeError
 from netzooe_eservice_api.constants import COMMON_HEADERS
 from netzooe_eservice_api.constants import ESERVICE_PORTAL
 from netzooe_eservice_api.constants import ESERVICE_PORTAL_API
+from netzooe_eservice_api.constants import ConsentRequestsStatus
 from netzooe_eservice_api.constants import ConsentsStatus
 from netzooe_eservice_api.constants import ConsumptionsDimension
 from netzooe_eservice_api.constants import ConsumptionsProfilesBranch
+from netzooe_eservice_api.constants import Granularity
+from netzooe_eservice_api.constants import ProfileType
 from netzooe_eservice_api.error import APIError
 from netzooe_eservice_api.error import AuthenticationError
 from netzooe_eservice_api.error import InvalidJsonError
@@ -36,13 +39,26 @@ if TYPE_CHECKING:
 type JSONResponse = dict[str, Any] | list[dict[str, Any]]
 
 
-def _enum_query(name: str, value: Sequence[Enum] | Enum | None) -> str:
-    """Build a query string like ``?name=A,B`` from one or more enum members, or ``""`` for `None`."""
-    if value is None:
-        return ""
+def _query(**params: Sequence[Enum] | Enum | bool | None) -> str:
+    """Build a query string like ``?name=A,B&flag=true`` from the parameters that are not `None`, or ``""``."""
+    parts: list[str] = []
 
-    values: Sequence[Enum] = [value] if isinstance(value, Enum) else value
-    return f"?{name}={','.join(member.value for member in values)}"
+    for name, value in params.items():
+        if value is None:
+            continue
+
+        if isinstance(value, bool):
+            parts.append(f"{name}={str(value).lower()}")
+        else:
+            values: Sequence[Enum] = [value] if isinstance(value, Enum) else value
+            parts.append(f"{name}={','.join(member.value for member in values)}")
+
+    return f"?{'&'.join(parts)}" if parts else ""
+
+
+def _enum_value(value: Enum | str, /) -> str:
+    """Return the value of an enum member, or the string itself."""
+    return value.value if isinstance(value, Enum) else value
 
 
 def _client_error(error: ClientError | TimeoutError, /) -> APIError:
@@ -60,9 +76,10 @@ class Pod(TypedDict):
     energy_community_id
         Optional ID of the energy community. Only sent if it is set.
     profile_type
-        Profile type, e.g. from `consumptions_profiles()`.
+        Profile type, e.g. from `consumptions_profiles()`. A `ProfileType` member or its string value.
     best_available_granularity
         Best available granularity of the measured values, e.g. from `consumptions_profiles()`.
+        A `Granularity` member or its string value.
     meter_point_administration_number
         Meter point administration number (Zählpunktnummer).
     date_from
@@ -74,8 +91,8 @@ class Pod(TypedDict):
 
     contract_account_number: str
     energy_community_id: NotRequired[str | None]
-    profile_type: str
-    best_available_granularity: str
+    profile_type: ProfileType | str
+    best_available_granularity: Granularity | str
     meter_point_administration_number: str
     date_from: str
     date_to: str
@@ -320,6 +337,46 @@ class NetzOOEeServiceAPI:
         """
         return cast("dict[str, Any]", await self._get(f"{ESERVICE_PORTAL_API}/dashboard"))
 
+    async def dashboard_headers(
+        self,
+        branch: list[ConsumptionsProfilesBranch] | ConsumptionsProfilesBranch | None = None,
+        *,
+        active_only: bool | None = None,
+    ) -> list[dict[str, Any]]:
+        """Get a short overview of the contract accounts with their contracts and points of delivery.
+
+        Parameters
+        ----------
+        branch
+            Only return contract accounts of this branch or these branches. Returns all contract accounts if `None`.
+        active_only
+            Only return active (`True`) contract accounts. Returns all contract accounts if `None`.
+
+        Returns
+        -------
+        list[dict[str, Any]]
+            Raw JSON response of the dashboard headers.
+
+        Raises
+        ------
+        AuthenticationError
+            The credentials were rejected (HTTP 401), also after a new login.
+        InvalidJsonError
+            The response is not valid JSON, e.g. the maintenance page ("Wartungsseite").
+        APIError
+            Any other HTTP or connection error.
+
+        Examples
+        --------
+        >>> headers = await client.dashboard_headers(active_only=True)
+        >>> headers[0]["contracts"][0]["meterPointAdministrationNumber"]
+
+        """
+        return cast(
+            "list[dict[str, Any]]",
+            await self._get(f"{ESERVICE_PORTAL_API}/dashboard/headers{_query(branch=branch, activeOnly=active_only)}"),
+        )
+
     async def consents(self, status: list[ConsentsStatus] | ConsentsStatus | None = None, /) -> list[dict[str, Any]]:
         """Get the data sharing consents.
 
@@ -349,12 +406,51 @@ class NetzOOEeServiceAPI:
         """
         return cast(
             "list[dict[str, Any]]",
-            await self._get(f"{ESERVICE_PORTAL_API}/consents{_enum_query('status', status)}"),
+            await self._get(f"{ESERVICE_PORTAL_API}/consents{_query(status=status)}"),
+        )
+
+    async def consent_requests(
+        self,
+        status: list[ConsentRequestsStatus] | ConsentRequestsStatus | None = None,
+        /,
+    ) -> list[dict[str, Any]]:
+        """Get the data sharing consent requests, e.g. of energy communities.
+
+        Parameters
+        ----------
+        status
+            Only return consent requests with this status or one of these statuses. Returns all consent requests
+            if `None`.
+
+        Returns
+        -------
+        list[dict[str, Any]]
+            Raw JSON response of the consent requests.
+
+        Raises
+        ------
+        AuthenticationError
+            The credentials were rejected (HTTP 401), also after a new login.
+        InvalidJsonError
+            The response is not valid JSON, e.g. the maintenance page ("Wartungsseite").
+        APIError
+            Any other HTTP or connection error.
+
+        Examples
+        --------
+        >>> await client.consent_requests(ConsentRequestsStatus.CONFIRMED)
+
+        """
+        return cast(
+            "list[dict[str, Any]]",
+            await self._get(f"{ESERVICE_PORTAL_API}/consent-requests{_query(status=status)}"),
         )
 
     async def consumptions_profiles(
         self,
         branch: list[ConsumptionsProfilesBranch] | ConsumptionsProfilesBranch | None = None,
+        *,
+        active_only: bool | None = None,
     ) -> list[dict[str, Any]]:
         """Get the consumption profiles of all points of delivery.
 
@@ -362,6 +458,8 @@ class NetzOOEeServiceAPI:
         ----------
         branch
             Only return profiles of this branch or these branches. Returns all profiles if `None`.
+        active_only
+            Only return profiles of active (`True`) points of delivery. Returns all profiles if `None`.
 
         Returns
         -------
@@ -379,12 +477,14 @@ class NetzOOEeServiceAPI:
 
         Examples
         --------
-        >>> await client.consumptions_profiles(ConsumptionsProfilesBranch.ELECTRICITY)
+        >>> await client.consumptions_profiles(ConsumptionsProfilesBranch.ELECTRICITY, active_only=True)
 
         """
         return cast(
             "list[dict[str, Any]]",
-            await self._get(f"{ESERVICE_PORTAL_API}/consumptions/profiles{_enum_query('branch', branch)}"),
+            await self._get(
+                f"{ESERVICE_PORTAL_API}/consumptions/profiles{_query(branch=branch, activeOnly=active_only)}",
+            ),
         )
 
     async def contract_accounts(self, business_partner_number: str, contract_account_number: str) -> dict[str, Any]:
@@ -461,8 +561,8 @@ class NetzOOEeServiceAPI:
         ...     pods=[
         ...         Pod(
         ...             contract_account_number="123456789012",
-        ...             profile_type="...",
-        ...             best_available_granularity="...",
+        ...             profile_type=ProfileType.ACTIVE_CURRENT,
+        ...             best_available_granularity=Granularity.QUARTER_OF_AN_HOUR,
         ...             meter_point_administration_number="AT0031000000000000000000000000000",
         ...             date_from="...",
         ...             date_to="...",
@@ -485,8 +585,8 @@ class NetzOOEeServiceAPI:
                                 if pod.get("energy_community_id") is not None
                                 else {}
                             ),
-                            "type": pod["profile_type"],
-                            "bestAvailableGranularity": pod["best_available_granularity"],
+                            "type": _enum_value(pod["profile_type"]),
+                            "bestAvailableGranularity": _enum_value(pod["best_available_granularity"]),
                             "meterPointAdministrationNumber": pod["meter_point_administration_number"],
                             "timerange": {
                                 "from": pod["date_from"],
