@@ -86,7 +86,8 @@ Before finishing a change, run all of them except the snapshot update.
   - every user-visible change gets an entry under `## [Unreleased]`
   - Keep a Changelog format, past tense
   - identifiers in backticks
-  - issues as `([Issue #67][issue-67])`
+  - issues as `([Issue #25][issue-25])`, pull requests as `([PR #19][pr-19])`
+  - issue and PR links are defined at the end of their release section, not at the bottom
   - releases are linked at the bottom:
     - `[Unreleased]` compares the latest release tag (no pre-release) with `HEAD`
     - each release compares its tag with the previous one
