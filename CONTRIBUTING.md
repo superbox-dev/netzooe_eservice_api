@@ -67,7 +67,7 @@ uv run pytest
 If a test changes the recorded requests, regenerate the snapshots and review the diff:
 
 ```bash
-uv run pytest --snapshot-update
+uv run pytest -n0 --snapshot-update
 ```
 
 ## License
