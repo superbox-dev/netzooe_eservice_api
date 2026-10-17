@@ -482,6 +482,48 @@ class TestHappyPathNetzOOEeServiceAPI:
             await client.logout()
 
     @pytest.mark.asyncio
+    async def test_late_401_after_relogin(self) -> None:
+        """Test a 401 response that arrives after another request already logged in again retries without a login."""
+        with aioresponses() as mock_api:
+            client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
+
+            mock_api.post("https://eservice.netzooe.at/service/j_security_check", status=200)
+            mock_api.get(
+                "https://eservice.netzooe.at/service/v1.0/session",
+                headers={"Set-Cookie": f"XSRF-TOKEN={MOCK_NEW_XSRF}; Path=/; Secure"},
+                status=200,
+            )
+            # Set by the retry of the first request, i.e. after it logged in again.
+            relogged_in: asyncio.Event = asyncio.Event()
+            calls: int = 0
+            late_call: int = 2
+
+            async def dashboard(_url: URL, **_kwargs: object) -> CallbackResult:
+                nonlocal calls
+                calls += 1
+
+                if calls == 1:
+                    return CallbackResult(status=401, payload={})
+
+                if calls == late_call:
+                    # Answer the second request with the expired token only after the first one logged in again.
+                    await relogged_in.wait()
+                    return CallbackResult(status=401, payload={})
+
+                relogged_in.set()
+                return CallbackResult(status=200, payload={})
+
+            mock_api.get("https://eservice.netzooe.at/service/v1.0/dashboard", callback=dashboard, repeat=4)
+
+            logins: int = len(recorded_calls(mock_api, "j_security_check"))
+
+            results = await asyncio.gather(client.dashboard(), client.dashboard())
+            assert results == [{}, {}]
+
+            assert len(recorded_calls(mock_api, "j_security_check")) == logins + 1
+            await client.logout()
+
+    @pytest.mark.asyncio
     async def test_consumptions_profiles_without_branch(self) -> None:
         """Test getting the consumption profiles without passing a branch."""
         with aioresponses() as mock_api:
@@ -526,6 +568,28 @@ class TestHappyPathNetzOOEeServiceAPI:
             )
             assert result == {}
             await client.logout()
+
+    @pytest.mark.asyncio
+    async def test_login_still_logged_in(self, snapshot: SnapshotAssertion) -> None:
+        """Test a login on a session that is still logged in logs out and logs in again."""
+        with aioresponses() as mock_api:
+            client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
+
+            mock_api.post("https://eservice.netzooe.at/service/j_security_check", status=404)
+            mock_api.get("https://eservice.netzooe.at/service/logout", status=200)
+            mock_api.post("https://eservice.netzooe.at/service/j_security_check", status=200)
+            mock_api.get(
+                "https://eservice.netzooe.at/service/v1.0/session",
+                headers={"Set-Cookie": f"XSRF-TOKEN={MOCK_NEW_XSRF}; Path=/; Secure"},
+                status=200,
+            )
+            mock_api.get("https://eservice.netzooe.at/service/logout", status=200)
+
+            await client.login()
+            assert client.xsrf_token == MOCK_NEW_XSRF
+            await client.logout()
+
+            assert mock_api.requests == snapshot
 
     @pytest.mark.asyncio
     async def test_logout_without_session(self) -> None:
@@ -639,6 +703,7 @@ class TestUnhappyPathNetzOOEeServiceAPI:
             mock_api.get(
                 "https://eservice.netzooe.at/service/v1.0/session",
                 status=401,
+                body="mocked body",
             )
 
             client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(
@@ -650,6 +715,7 @@ class TestUnhappyPathNetzOOEeServiceAPI:
                 await client.login()
 
             assert str(error.value) == "401 Unauthorized: No permission -- see authorization schemes"
+            assert error.value.detail == "mocked body"
             assert client.xsrf_token == ""
 
             assert mock_api.requests == snapshot
@@ -687,6 +753,9 @@ class TestUnhappyPathNetzOOEeServiceAPI:
                 await client.dashboard()
 
             assert str(error.value) == "401 Unauthorized: No permission -- see authorization schemes"
+            assert client.xsrf_token == ""
+
+            await client.logout()
 
     @pytest.mark.asyncio
     async def test_client_error(self) -> None:
@@ -704,9 +773,11 @@ class TestUnhappyPathNetzOOEeServiceAPI:
 
             assert str(error.value) == "mocked error"
 
+            await client.logout()
+
     @pytest.mark.asyncio
-    async def test_login_again_after_client_error(self) -> None:
-        """Test the next request after a client error logs in again on the new session."""
+    async def test_client_error_keeps_login(self) -> None:
+        """Test a client error keeps the session and its login, so the next request does not log in again."""
         with aioresponses() as mock_api:
             client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api, repeat=2)
 
@@ -719,7 +790,50 @@ class TestUnhappyPathNetzOOEeServiceAPI:
             with pytest.raises(APIError):
                 await client.dashboard()
 
-            assert client.xsrf_token == ""
+            assert client.xsrf_token == MOCK_XSRF
+
+            result = await client.dashboard()
+            assert result == {}
+
+            assert len(recorded_calls(mock_api, "j_security_check")) == 1
+            await client.logout()
+
+    @pytest.mark.asyncio
+    async def test_concurrent_requests_failed_login_once(self) -> None:
+        """Test concurrent requests with rejected credentials share one failed login instead of logging in each."""
+        with aioresponses() as mock_api:
+            mock_api.post("https://eservice.netzooe.at/service/j_security_check", status=401, repeat=True)
+
+            client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(username=MOCK_USERNAME, password=MOCK_CREDENTIAL)
+
+            results = await asyncio.gather(
+                client.dashboard(),
+                client.consents(),
+                client.consumptions_profiles(),
+                return_exceptions=True,
+            )
+
+            assert [type(result) for result in results] == [AuthenticationError] * 3
+            assert len(recorded_calls(mock_api, "j_security_check")) == 1
+
+    @pytest.mark.asyncio
+    async def test_passed_session_closed_after_login(self) -> None:
+        """Test a request logs in again if the passed session was closed after the login."""
+
+        async def scenario(mock_api: aioresponses) -> None:
+            create_client_mocks: NetzOOEeServiceAPI = await create_client(mock_api, repeat=2)
+            del create_client_mocks
+
+            mock_api.get("https://eservice.netzooe.at/service/v1.0/dashboard", status=200, payload={})
+
+            session: ClientSession = ClientSession()
+            client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(
+                username=MOCK_USERNAME,
+                password=MOCK_CREDENTIAL,
+                session=session,
+            )
+            await client.login()
+            await session.close()
             logins: int = len(recorded_calls(mock_api, "j_security_check"))
 
             result = await client.dashboard()
@@ -727,6 +841,8 @@ class TestUnhappyPathNetzOOEeServiceAPI:
 
             assert len(recorded_calls(mock_api, "j_security_check")) == logins + 1
             await client.logout()
+
+        assert await count_unclosed_sessions(scenario) == 0
 
     @pytest.mark.asyncio
     async def test_internal_server_error(self) -> None:
@@ -783,6 +899,69 @@ class TestUnhappyPathNetzOOEeServiceAPI:
             await client.logout()
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("status", "exception"),
+        [
+            (200, InvalidJsonError),
+            (500, APIError),
+        ],
+    )
+    async def test_undecodable_body(self, status: int, exception: type[APIError]) -> None:
+        """Test a body that is not valid in its charset is raised as an API error with the decodable part."""
+        with aioresponses() as mock_api:
+            client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
+
+            mock_api.get(
+                "https://eservice.netzooe.at/service/v1.0/dashboard",
+                status=status,
+                body="mocked body \xfc".encode("latin-1"),
+                content_type="application/json",
+            )
+
+            with pytest.raises(exception) as error:
+                await client.dashboard()
+
+            assert type(error.value) is exception
+            assert error.value.detail == "mocked body \ufffd"
+
+            await client.logout()
+
+    @pytest.mark.asyncio
+    async def test_unexpected_json_shape(self) -> None:
+        """Test a JSON array where an object is expected raises an invalid JSON error instead of returning it."""
+        with aioresponses() as mock_api:
+            client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
+
+            mock_api.get("https://eservice.netzooe.at/service/v1.0/dashboard", status=200, payload=[])
+
+            with pytest.raises(InvalidJsonError) as error:
+                await client.dashboard()
+
+            assert error.value.detail == "[]"
+
+            await client.logout()
+
+    @pytest.mark.asyncio
+    async def test_empty_body(self) -> None:
+        """Test a successful response with an empty body raises an invalid JSON error instead of returning None."""
+        with aioresponses() as mock_api:
+            client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
+
+            mock_api.get(
+                "https://eservice.netzooe.at/service/v1.0/dashboard",
+                status=200,
+                body="",
+                content_type="application/json",
+            )
+
+            with pytest.raises(InvalidJsonError) as error:
+                await client.dashboard()
+
+            assert error.value.detail == ""
+
+            await client.logout()
+
+    @pytest.mark.asyncio
     async def test_unknown_status(self) -> None:
         """Test a status code that is not part of HTTPStatus is raised as an API error."""
         with aioresponses() as mock_api:
@@ -815,6 +994,8 @@ class TestUnhappyPathNetzOOEeServiceAPI:
                 await client.dashboard()
 
             assert str(error.value) == "TimeoutError"
+
+            await client.logout()
 
     @pytest.mark.asyncio
     async def test_login_client_error(self) -> None:

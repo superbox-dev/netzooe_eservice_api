@@ -39,6 +39,7 @@ Before finishing a change, run all of them except the snapshot update.
 
 - NumPy-style docstrings everywhere, also in tests
 - No lint or type suppressions (inline or in config). Fix the code instead
+- Avoid `cast()`: narrow types with checks that also run at runtime (e.g. `isinstance`) or with generics
 - No real credentials or customer data, use placeholders like `"test"`
 - `git add` new files, CI only checks tracked files
 - Never edit generated or CI-managed files (`version.py`, `coverage-badge.svg`)
@@ -60,6 +61,7 @@ Before finishing a change, run all of them except the snapshot update.
   - optional fields are only sent when set
   - enum parameters accept a member, a list of members or `None`
   - return the raw JSON
+  - pass the expected JSON type (`dict` or `list`) to the request helpers, which check it
 
 ## Adding an endpoint
 
@@ -86,7 +88,7 @@ Before finishing a change, run all of them except the snapshot update.
   - identifiers in backticks
   - issues as `([Issue #67][issue-67])`
   - releases are linked at the bottom:
-    - `[Unreleased]` compares the latest tag with `HEAD`
+    - `[Unreleased]` compares the latest release tag (no pre-release) with `HEAD`
     - each release compares its tag with the previous one
     - the first release links to its release tag
 - Branches:

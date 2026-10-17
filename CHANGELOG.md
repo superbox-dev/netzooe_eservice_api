@@ -21,13 +21,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added the `VOLUME` member to `ConsumptionsDimension`
 - Added the `Granularity` and `ProfileType` enums, `Pod` accepts them for `best_available_granularity` and
   `profile_type` in addition to strings
+- Added the `Apache-2.0` license expression and the `Typing :: Typed` / `Framework :: AsyncIO` classifiers
+  to the package metadata
 
 ### Changed
 
-- Added the `Apache-2.0` license expression and the `Typing :: Typed` / `Framework :: AsyncIO` classifiers
-  to the package metadata
 - Made the `branch` argument of `consumptions_profiles()` optional with a default of `None`
-- Changed concurrent requests without a valid session to share a single login
+- Changed concurrent requests without a valid session and concurrent `login()` calls to share a single login and
+  its result, so rejected credentials are sent only once instead of once per request
+- Stopped closing the own session on connection errors and timeouts, so concurrent requests are no longer aborted and
+  the next request reuses the login. The own session is closed on `logout()` and if a login fails
 - Stopped `logout()` from sending a request if the client has no open session
 - Changed `login()` to raise `APIError` if the session response contains no `XSRF-TOKEN` cookie, instead of
   succeeding with an empty XSRF token
@@ -43,9 +46,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed `logout()` not releasing the response of the logout request
 - Fixed a session leak when a closed `session` was passed to `NetzOOEeServiceAPI()`
 - URL encoded the path parameters of `contract_accounts()`
-- Changed `APIError` to pass its message to `Exception`, so `args` and `repr()` contain the message
-- Fixed requests after a connection error or timeout being sent with the XSRF token of the closed session instead
-  of logging in again
+- Fixed `args` and `repr()` of `APIError` not containing the message
+- Fixed `login()` failing with `404 Not Found` if the session is still logged in, it now logs out and logs in again
+- Fixed requests being sent with the XSRF token of a passed `session` that was closed after the login, instead of
+  logging in again on the new session
+- Caught response bodies that are not valid in their charset (`UnicodeDecodeError`) and raised them as
+  `InvalidJsonError` or `APIError`
+- Raised `InvalidJsonError` for a successful response with an empty body or JSON of an unexpected type (e.g. an array
+  instead of an object), instead of returning `None` or the unexpected value
+- Kept the response body of a failed session request in `APIError.detail`
 - Fixed the re-login after a `401` response holding a connection of the session until the retry finished
 
 ## [1.1.1] - 2026-08-12

@@ -3,17 +3,15 @@
 """Asynchronous client for the Netz OÖ eService API."""
 
 import asyncio
-import re
 from collections.abc import Sequence
+from contextlib import suppress
 from enum import Enum
 from http import HTTPStatus
 from json.decoder import JSONDecodeError
-from typing import TYPE_CHECKING
 from typing import Any
 from typing import Literal
 from typing import NotRequired
 from typing import TypedDict
-from typing import cast
 from urllib.parse import quote
 
 from aiohttp import ClientError
@@ -33,10 +31,8 @@ from netzooe_eservice_api.error import APIError
 from netzooe_eservice_api.error import AuthenticationError
 from netzooe_eservice_api.error import InvalidJsonError
 
-if TYPE_CHECKING:
-    from multidict import CIMultiDictProxy
-
-type JSONResponse = dict[str, Any] | list[dict[str, Any]]
+# Shapes of the JSON responses, `_request()` checks the response against the expected one.
+type _JSONResponse = dict[str, Any] | list[dict[str, Any]]
 
 
 class Pod(TypedDict):
@@ -95,7 +91,7 @@ class NetzOOEeServiceAPI:
             Password of the eService portal.
         session
             Optional aiohttp client session. A passed session is never closed by the client.
-            If no session is passed, the client creates its own and closes it on `logout()` and on errors.
+            If no session is passed, the client creates its own and closes it on `logout()` and if a login fails.
 
         Examples
         --------
@@ -114,13 +110,15 @@ class NetzOOEeServiceAPI:
         self._custom_session: bool = session is None
 
         self.xsrf_token: str = ""
-        self._login_lock: asyncio.Lock = asyncio.Lock()
+        self._login_task: asyncio.Task[None] | None = None
 
     async def _get_session(self) -> ClientSession:
         if self._session is None or self._session.closed:
             # Also for a passed session that is already closed. The new session is owned by the client.
             self._session = ClientSession()
             self._custom_session = True
+            # The new session has none of the login cookies the token belongs to.
+            self.xsrf_token = ""
 
         return self._session
 
@@ -139,29 +137,6 @@ class NetzOOEeServiceAPI:
             "Content-Type": "application/json",
             "x-xsrf-token": self.xsrf_token,
         }
-
-    async def _init_api_session(self) -> None:
-        session: ClientSession = await self._get_session()
-
-        async with session.get(f"{ESERVICE_PORTAL_API}/session", headers=COMMON_HEADERS) as resp:
-            if resp.status != HTTPStatus.OK:
-                await self._close_session()
-                raise APIError(status=resp.status)
-
-            if not self._set_xsrf_token(resp.headers):
-                await self._close_session()
-                message: str = "The session response contains no XSRF token"
-                raise APIError(message)
-
-    def _set_xsrf_token(self, headers: "CIMultiDictProxy[str]") -> bool:
-        cookies: list[str] = headers.getall("Set-Cookie", [])
-        cookie_string: str = ";".join(cookies)
-
-        if match := re.search(r"XSRF-TOKEN=([^;]+)", cookie_string):
-            self.xsrf_token = match.group(1)
-            return True
-
-        return False
 
     @staticmethod
     def _query(**params: Sequence[Enum] | Enum | bool | None) -> str:
@@ -190,63 +165,73 @@ class NetzOOEeServiceAPI:
         """Map an aiohttp client error or a timeout to an `APIError`."""
         return APIError(str(error) or type(error).__name__)
 
-    async def _request(
+    async def _request[T: _JSONResponse](
         self,
         method: Literal["GET", "POST"],
         url: str,
+        response_type: type[T],
         *,
         json: dict[str, Any] | None = None,
         retry: bool = True,
-    ) -> JSONResponse:
-        message: str
-
+    ) -> T:
         try:
-            if not self.xsrf_token:
-                await self._relogin(expired_token="")
-
-            # Read session and headers after the login, the portal rejects POST requests without a valid XSRF token.
+            # Resets the token if the session has to be replaced, so the request logs in on the new session.
             session: ClientSession = await self._get_session()
+
+            if not self.xsrf_token:
+                await self.login()
+
+            # The headers are read after the login, the portal rejects POST requests without a valid XSRF token.
             used_token: str = self.xsrf_token
 
             async with session.request(method, url, headers=self.headers, json=json) as resp:
                 if resp.status == HTTPStatus.OK:
-                    try:
-                        return await resp.json()
-                    except (JSONDecodeError, ContentTypeError) as error:
-                        message = await resp.text()
-                        raise InvalidJsonError(message, status=resp.status) from error
+                    data: Any = None
+
+                    with suppress(JSONDecodeError, ContentTypeError, UnicodeDecodeError):
+                        data = await resp.json()
+
+                    # Not JSON, not the expected object or array, or e.g. an empty body, which aiohttp returns as None.
+                    if not isinstance(data, response_type):
+                        raise InvalidJsonError(await resp.text(errors="replace"), status=resp.status)
+
+                    return data
                 if resp.status != HTTPStatus.UNAUTHORIZED:
-                    message = await resp.text()
-                    raise APIError(message, status=resp.status)
+                    raise APIError(await resp.text(errors="replace"), status=resp.status)
+
+            if not retry:
+                self.xsrf_token = ""
+                raise AuthenticationError(status=HTTPStatus.UNAUTHORIZED)
 
             # Log in again after the 401 response is released, so it does not hold a connection of the session.
-            if retry:
-                await self._relogin(expired_token=used_token)
-                return await self._request(method, url, json=json, retry=False)
-
-            await self._close_session()
-
-            raise AuthenticationError(status=HTTPStatus.UNAUTHORIZED)
-        except (ClientError, TimeoutError) as error:
-            await self._close_session()
-            raise self._client_error(error) from error
-
-    async def _relogin(self, *, expired_token: str) -> None:
-        # Concurrent requests share one login. Skip it if another request already got a new token.
-        async with self._login_lock:
-            if self.xsrf_token == expired_token:
+            # Skip the login if another request already got a new token.
+            if self.xsrf_token == used_token:
                 await self.login()
 
-    async def _get(self, url: str) -> JSONResponse:
-        return await self._request("GET", url)
+            return await self._request(method, url, response_type, json=json, retry=False)
+        except (ClientError, TimeoutError) as error:
+            # The session and its login stay valid, closing it would also abort concurrent requests.
+            raise self._client_error(error) from error
 
-    async def _post(self, url: str, /, *, json: dict[str, Any]) -> JSONResponse:
-        return await self._request("POST", url, json=json)
+    async def _get[T: _JSONResponse](self, url: str, response_type: type[T], /) -> T:
+        return await self._request("GET", url, response_type)
+
+    async def _post[T: _JSONResponse](
+        self,
+        url: str,
+        response_type: type[T],
+        /,
+        *,
+        json: dict[str, Any],
+    ) -> T:
+        return await self._request("POST", url, response_type, json=json)
 
     async def login(self) -> None:
         """Log in to the eService portal and get a new XSRF token.
 
         Calling this method is optional, the client logs in automatically on the first request.
+        Concurrent calls and automatic logins share one login and its result.
+        If the session is still logged in, the client logs out and logs in again.
 
         Raises
         ------
@@ -256,32 +241,62 @@ class NetzOOEeServiceAPI:
             Any other HTTP or connection error, or the session response contains no XSRF token.
 
         """
+        if self._login_task is None or self._login_task.done():
+            self._login_task = asyncio.create_task(self._login())
+
+        # Shielded, so a cancelled caller does not cancel the login of the other callers.
+        await asyncio.shield(self._login_task)
+
+    async def _login(self) -> None:
         session: ClientSession = await self._get_session()
 
         try:
-            async with session.post(
-                f"{ESERVICE_PORTAL}/service/j_security_check",
-                json={
-                    "j_username": self._username,
-                    "j_password": self._password,
-                },
-                headers={
-                    **COMMON_HEADERS,
-                    "Content-Type": "application/json",
-                },
-            ) as resp:
-                if resp.status != HTTPStatus.OK:
-                    await self._close_session()
-
-                    if resp.status == HTTPStatus.UNAUTHORIZED:
-                        raise AuthenticationError(status=HTTPStatus.UNAUTHORIZED)
-
-                    raise APIError(status=resp.status)
-
-                await self._init_api_session()
+            await self._authenticate(session)
         except (ClientError, TimeoutError) as error:
             await self._close_session()
             raise self._client_error(error) from error
+        except APIError:
+            await self._close_session()
+            raise
+
+    async def _authenticate(self, session: ClientSession, /) -> None:
+        status: int = await self._post_credentials(session)
+
+        # The portal answers 404 if the session is still logged in.
+        if status == HTTPStatus.NOT_FOUND:
+            async with session.get(f"{ESERVICE_PORTAL}/service/logout", headers=COMMON_HEADERS):
+                pass
+
+            status = await self._post_credentials(session)
+
+        if status == HTTPStatus.UNAUTHORIZED:
+            raise AuthenticationError(status=HTTPStatus.UNAUTHORIZED)
+        if status != HTTPStatus.OK:
+            raise APIError(status=status)
+
+        async with session.get(f"{ESERVICE_PORTAL_API}/session", headers=COMMON_HEADERS) as resp:
+            if resp.status != HTTPStatus.OK:
+                raise APIError(await resp.text(errors="replace"), status=resp.status)
+
+            if not (cookie := resp.cookies.get("XSRF-TOKEN")) or not cookie.value:
+                message: str = "The session response contains no XSRF token"
+                raise APIError(message)
+
+            self.xsrf_token = cookie.value
+
+    async def _post_credentials(self, session: ClientSession, /) -> int:
+        async with session.post(
+            f"{ESERVICE_PORTAL}/service/j_security_check",
+            json={
+                "j_username": self._username,
+                "j_password": self._password,
+            },
+            headers={
+                **COMMON_HEADERS,
+                "Content-Type": "application/json",
+            },
+        ) as resp:
+            return resp.status
 
     async def logout(self) -> None:
         """Log out from the eService portal and reset the XSRF token.
@@ -297,19 +312,12 @@ class NetzOOEeServiceAPI:
         """
         try:
             if self._session is not None and not self._session.closed:
-                async with self._session.get(
-                    f"{ESERVICE_PORTAL}/service/logout",
-                    headers={
-                        **COMMON_HEADERS,
-                    },
-                ) as resp:
+                async with self._session.get(f"{ESERVICE_PORTAL}/service/logout", headers=COMMON_HEADERS) as resp:
                     if not resp.ok:
-                        message: str = await resp.text()
-                        raise APIError(message, status=resp.status)
+                        raise APIError(await resp.text(errors="replace"), status=resp.status)
         except (ClientError, TimeoutError) as error:
             raise self._client_error(error) from error
         finally:
-            self.xsrf_token = ""
             await self._close_session()
 
     async def dashboard(self) -> dict[str, Any]:
@@ -335,7 +343,7 @@ class NetzOOEeServiceAPI:
         >>> dashboard["contractAccounts"]
 
         """
-        return cast("dict[str, Any]", await self._get(f"{ESERVICE_PORTAL_API}/dashboard"))
+        return await self._get(f"{ESERVICE_PORTAL_API}/dashboard", dict)
 
     async def dashboard_headers(
         self,
@@ -372,11 +380,9 @@ class NetzOOEeServiceAPI:
         >>> headers[0]["contracts"][0]["meterPointAdministrationNumber"]
 
         """
-        return cast(
-            "list[dict[str, Any]]",
-            await self._get(
-                f"{ESERVICE_PORTAL_API}/dashboard/headers{self._query(branch=branch, activeOnly=active_only)}"
-            ),
+        return await self._get(
+            f"{ESERVICE_PORTAL_API}/dashboard/headers{self._query(branch=branch, activeOnly=active_only)}",
+            list,
         )
 
     async def consents(self, status: list[ConsentsStatus] | ConsentsStatus | None = None, /) -> list[dict[str, Any]]:
@@ -406,10 +412,7 @@ class NetzOOEeServiceAPI:
         >>> await client.consents([ConsentsStatus.ACTIVE, ConsentsStatus.ACTIVE_UNCHANGEABLE])
 
         """
-        return cast(
-            "list[dict[str, Any]]",
-            await self._get(f"{ESERVICE_PORTAL_API}/consents{self._query(status=status)}"),
-        )
+        return await self._get(f"{ESERVICE_PORTAL_API}/consents{self._query(status=status)}", list)
 
     async def consent_requests(
         self,
@@ -443,10 +446,7 @@ class NetzOOEeServiceAPI:
         >>> await client.consent_requests(ConsentRequestsStatus.CONFIRMED)
 
         """
-        return cast(
-            "list[dict[str, Any]]",
-            await self._get(f"{ESERVICE_PORTAL_API}/consent-requests{self._query(status=status)}"),
-        )
+        return await self._get(f"{ESERVICE_PORTAL_API}/consent-requests{self._query(status=status)}", list)
 
     async def consumptions_profiles(
         self,
@@ -482,11 +482,9 @@ class NetzOOEeServiceAPI:
         >>> await client.consumptions_profiles(ConsumptionsProfilesBranch.ELECTRICITY, active_only=True)
 
         """
-        return cast(
-            "list[dict[str, Any]]",
-            await self._get(
-                f"{ESERVICE_PORTAL_API}/consumptions/profiles{self._query(branch=branch, activeOnly=active_only)}",
-            ),
+        return await self._get(
+            f"{ESERVICE_PORTAL_API}/consumptions/profiles{self._query(branch=branch, activeOnly=active_only)}",
+            list,
         )
 
     async def contract_accounts(self, business_partner_number: str, contract_account_number: str) -> dict[str, Any]:
@@ -521,12 +519,10 @@ class NetzOOEeServiceAPI:
         ... )
 
         """
-        return cast(
-            "dict[str, Any]",
-            await self._get(
-                f"{ESERVICE_PORTAL_API}/contract-accounts/"
-                f"{quote(str(business_partner_number), safe='')}/{quote(str(contract_account_number), safe='')}",
-            ),
+        return await self._get(
+            f"{ESERVICE_PORTAL_API}/contract-accounts/"
+            f"{quote(str(business_partner_number), safe='')}/{quote(str(contract_account_number), safe='')}",
+            dict,
         )
 
     async def consumptions_profile(
@@ -574,30 +570,28 @@ class NetzOOEeServiceAPI:
         ... )
 
         """
-        return cast(
-            "list[dict[str, Any]]",
-            await self._post(
-                f"{ESERVICE_PORTAL_API}/consumptions/profile/active",
-                json={
-                    "pods": [
-                        {
-                            "contractAccountNumber": pod["contract_account_number"],
-                            **(
-                                {"energyCommunityId": pod["energy_community_id"]}
-                                if pod.get("energy_community_id") is not None
-                                else {}
-                            ),
-                            "type": self._enum_value(pod["profile_type"]),
-                            "bestAvailableGranularity": self._enum_value(pod["best_available_granularity"]),
-                            "meterPointAdministrationNumber": pod["meter_point_administration_number"],
-                            "timerange": {
-                                "from": pod["date_from"],
-                                "to": pod["date_to"],
-                            },
-                        }
-                        for pod in pods
-                    ],
-                    "dimension": dimension.value,
-                },
-            ),
+        return await self._post(
+            f"{ESERVICE_PORTAL_API}/consumptions/profile/active",
+            list,
+            json={
+                "pods": [
+                    {
+                        "contractAccountNumber": pod["contract_account_number"],
+                        **(
+                            {"energyCommunityId": pod["energy_community_id"]}
+                            if pod.get("energy_community_id") is not None
+                            else {}
+                        ),
+                        "type": self._enum_value(pod["profile_type"]),
+                        "bestAvailableGranularity": self._enum_value(pod["best_available_granularity"]),
+                        "meterPointAdministrationNumber": pod["meter_point_administration_number"],
+                        "timerange": {
+                            "from": pod["date_from"],
+                            "to": pod["date_to"],
+                        },
+                    }
+                    for pod in pods
+                ],
+                "dimension": dimension.value,
+            },
         )
