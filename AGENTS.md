@@ -12,7 +12,7 @@ Published on PyPI and used by the Home Assistant integration.
 uv run ruff format                   # format (lint.sh only checks)
 ./scripts/lint.sh                    # all linters and type checks
 uv run pytest                        # tests + coverage
-uv run pytest --snapshot-update      # regenerate snapshots, then review the diff
+uv run pytest -n0 --snapshot-update  # regenerate snapshots (without xdist), then review the diff
 ```
 
 Before finishing a change, run all of them except the snapshot update.
