@@ -38,7 +38,7 @@ Before finishing a change, run all of them except the snapshot update.
   ```
 
 - NumPy-style docstrings everywhere, also in tests
-- No lint or type suppressions (inline or in config). Fix the code instead
+- No lint or type suppressions (inline or in config), except the existing ignores in `ruff.toml`. Fix the code instead
 - Avoid `cast()`: narrow types with checks that also run at runtime (e.g. `isinstance`) or with generics
 - No real credentials or customer data, use placeholders like `"test"`
 - `git add` new files, CI only checks tracked files
