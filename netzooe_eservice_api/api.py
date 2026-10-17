@@ -39,33 +39,6 @@ if TYPE_CHECKING:
 type JSONResponse = dict[str, Any] | list[dict[str, Any]]
 
 
-def _query(**params: Sequence[Enum] | Enum | bool | None) -> str:
-    """Build a query string like ``?name=A,B&flag=true`` from the parameters that are not `None`, or ``""``."""
-    parts: list[str] = []
-
-    for name, value in params.items():
-        if value is None:
-            continue
-
-        if isinstance(value, bool):
-            parts.append(f"{name}={str(value).lower()}")
-        else:
-            values: Sequence[Enum] = [value] if isinstance(value, Enum) else value
-            parts.append(f"{name}={','.join(member.value for member in values)}")
-
-    return f"?{'&'.join(parts)}" if parts else ""
-
-
-def _enum_value(value: Enum | str, /) -> str:
-    """Return the value of an enum member, or the string itself."""
-    return value.value if isinstance(value, Enum) else value
-
-
-def _client_error(error: ClientError | TimeoutError, /) -> APIError:
-    """Map an aiohttp client error or a timeout to an `APIError`."""
-    return APIError(str(error) or type(error).__name__)
-
-
 class Pod(TypedDict):
     """Point of delivery (POD) used to request a consumption profile.
 
@@ -190,6 +163,33 @@ class NetzOOEeServiceAPI:
 
         return False
 
+    @staticmethod
+    def _query(**params: Sequence[Enum] | Enum | bool | None) -> str:
+        """Build a query string like ``?name=A,B&flag=true`` from the parameters that are not `None`, or ``""``."""
+        parts: list[str] = []
+
+        for name, value in params.items():
+            if value is None:
+                continue
+
+            if isinstance(value, bool):
+                parts.append(f"{name}={str(value).lower()}")
+            else:
+                values: Sequence[Enum] = [value] if isinstance(value, Enum) else value
+                parts.append(f"{name}={','.join(member.value for member in values)}")
+
+        return f"?{'&'.join(parts)}" if parts else ""
+
+    @staticmethod
+    def _enum_value(value: Enum | str, /) -> str:
+        """Return the value of an enum member, or the string itself."""
+        return value.value if isinstance(value, Enum) else value
+
+    @staticmethod
+    def _client_error(error: ClientError | TimeoutError, /) -> APIError:
+        """Map an aiohttp client error or a timeout to an `APIError`."""
+        return APIError(str(error) or type(error).__name__)
+
     async def _request(
         self,
         method: Literal["GET", "POST"],
@@ -229,7 +229,7 @@ class NetzOOEeServiceAPI:
             raise AuthenticationError(status=HTTPStatus.UNAUTHORIZED)
         except (ClientError, TimeoutError) as error:
             await self._close_session()
-            raise _client_error(error) from error
+            raise self._client_error(error) from error
 
     async def _relogin(self, *, expired_token: str) -> None:
         # Concurrent requests share one login. Skip it if another request already got a new token.
@@ -281,7 +281,7 @@ class NetzOOEeServiceAPI:
                 await self._init_api_session()
         except (ClientError, TimeoutError) as error:
             await self._close_session()
-            raise _client_error(error) from error
+            raise self._client_error(error) from error
 
     async def logout(self) -> None:
         """Log out from the eService portal and reset the XSRF token.
@@ -307,7 +307,7 @@ class NetzOOEeServiceAPI:
                         message: str = await resp.text()
                         raise APIError(message, status=resp.status)
         except (ClientError, TimeoutError) as error:
-            raise _client_error(error) from error
+            raise self._client_error(error) from error
         finally:
             self.xsrf_token = ""
             await self._close_session()
@@ -374,7 +374,9 @@ class NetzOOEeServiceAPI:
         """
         return cast(
             "list[dict[str, Any]]",
-            await self._get(f"{ESERVICE_PORTAL_API}/dashboard/headers{_query(branch=branch, activeOnly=active_only)}"),
+            await self._get(
+                f"{ESERVICE_PORTAL_API}/dashboard/headers{self._query(branch=branch, activeOnly=active_only)}"
+            ),
         )
 
     async def consents(self, status: list[ConsentsStatus] | ConsentsStatus | None = None, /) -> list[dict[str, Any]]:
@@ -406,7 +408,7 @@ class NetzOOEeServiceAPI:
         """
         return cast(
             "list[dict[str, Any]]",
-            await self._get(f"{ESERVICE_PORTAL_API}/consents{_query(status=status)}"),
+            await self._get(f"{ESERVICE_PORTAL_API}/consents{self._query(status=status)}"),
         )
 
     async def consent_requests(
@@ -443,7 +445,7 @@ class NetzOOEeServiceAPI:
         """
         return cast(
             "list[dict[str, Any]]",
-            await self._get(f"{ESERVICE_PORTAL_API}/consent-requests{_query(status=status)}"),
+            await self._get(f"{ESERVICE_PORTAL_API}/consent-requests{self._query(status=status)}"),
         )
 
     async def consumptions_profiles(
@@ -483,7 +485,7 @@ class NetzOOEeServiceAPI:
         return cast(
             "list[dict[str, Any]]",
             await self._get(
-                f"{ESERVICE_PORTAL_API}/consumptions/profiles{_query(branch=branch, activeOnly=active_only)}",
+                f"{ESERVICE_PORTAL_API}/consumptions/profiles{self._query(branch=branch, activeOnly=active_only)}",
             ),
         )
 
@@ -585,8 +587,8 @@ class NetzOOEeServiceAPI:
                                 if pod.get("energy_community_id") is not None
                                 else {}
                             ),
-                            "type": _enum_value(pod["profile_type"]),
-                            "bestAvailableGranularity": _enum_value(pod["best_available_granularity"]),
+                            "type": self._enum_value(pod["profile_type"]),
+                            "bestAvailableGranularity": self._enum_value(pod["best_available_granularity"]),
                             "meterPointAdministrationNumber": pod["meter_point_administration_number"],
                             "timerange": {
                                 "from": pod["date_from"],
