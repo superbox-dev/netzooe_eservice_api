@@ -2,7 +2,6 @@ name: CI
 
 permissions:
   contents: read
-  pull-requests: write
 
 on:
   workflow_dispatch:
@@ -49,6 +48,25 @@ jobs:
       - name: Lint Markdown files
         run: uv run rumdl check $(git ls-files '*.md')
 
+  documentation:
+    name: Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Set up project
+        uses: ./.github/actions/setup-project
+        with:
+          python-version: 3.14
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - name: Build website
+        run: ./scripts/docs.sh
+
   security:
     name: Security
     uses: ./.github/workflows/security.yml
@@ -72,7 +90,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Run tests
-        run: uv run pytest -n auto
+        run: uv run pytest
       - name: Upload coverage
         uses: actions/upload-artifact@v7
         with:
@@ -84,7 +102,7 @@ jobs:
   coverage:
     name: Generate coverage badge
     runs-on: ubuntu-latest
-    if: github.ref_type != 'tag'
+    if: github.event_name == 'push' && github.ref_type != 'tag'
     needs:
       - configure
       - tests
@@ -105,7 +123,7 @@ jobs:
       - name: Create coverage badge
         run: uv run genbadge coverage --input-file coverage.xml
       - name: Verify coverage badge changed
-        uses: tj-actions/verify-changed-files@v20
+        uses: tj-actions/verify-changed-files@a1c6acee9df209257a246f2cc6ae8cb6581c1edf  # v20.0.4
         id: changed-files
         with:
           files: coverage-badge.svg
@@ -118,7 +136,7 @@ jobs:
           git commit -m "Updated coverage-badge.svg"
       - name: Push changes
         if: steps.changed-files.outputs.files_changed == 'true'
-        uses: ad-m/github-push-action@master
+        uses: ad-m/github-push-action@881a6320fdb16eb5318c5054f31c218aec2b324c  # v1.3.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           branch: ${{ github.ref }}
@@ -188,13 +206,55 @@ jobs:
             echo "🟢 Regular release"
             echo "prerelease=false" >> "$GITHUB_OUTPUT"
           fi
+      - name: Create release notes
+        env:
+          PRERELEASE: ${{ steps.check_prerelease.outputs.prerelease }}
+        run: |
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+          VERSION="${TAG_NAME#v}"
+          HEADING="$(grep -m 1 -F "## [${VERSION}]" CHANGELOG.md | sed 's/^## //' || true)"
+
+          if [[ -n "$HEADING" ]]; then
+            # Same anchor as GitHub: lowercase, without punctuation, spaces as hyphens.
+            ANCHOR="$(echo "$HEADING" | tr '[:upper:]' '[:lower:]' | tr -d -c 'a-z0-9 _-' | tr ' ' '-')"
+          elif [[ "$PRERELEASE" == "true" ]]; then
+            ANCHOR="unreleased"
+          else
+            echo "::error::No section for ${VERSION} in CHANGELOG.md"
+            exit 1
+          fi
+
+          URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/${TAG_NAME}/CHANGELOG.md#${ANCHOR}"
+          echo "See the [changelog](${URL}) for all changes." > release-notes.md
+          cat release-notes.md
       - name: Release on GitHub
         uses: softprops/action-gh-release@v3
         with:
+          body_path: release-notes.md
           files: |
             dist/*.tar.gz
             dist/*.whl
           prerelease: ${{ steps.check_prerelease.outputs.prerelease }}
+      - name: Delete old pre-releases and their tags
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+
+          git ls-remote --tags --refs origin 'v*' | sed 's|.*refs/tags/||' |
+            while read -r TAG; do
+              if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+b[0-9]+$ || "$TAG" == "$TAG_NAME" ]]; then
+                continue
+              fi
+
+              if gh release view "$TAG" > /dev/null 2>&1; then
+                echo "Deleting pre-release and tag $TAG"
+                gh release delete "$TAG" --yes --cleanup-tag
+              else
+                echo "Deleting tag $TAG"
+                gh api --method DELETE "repos/${GITHUB_REPOSITORY}/git/refs/tags/${TAG}"
+              fi
+            done
 
   publish-on-pypi:
     name: Publish
