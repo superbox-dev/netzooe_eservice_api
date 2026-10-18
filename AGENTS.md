@@ -17,21 +17,26 @@ uv run pytest -n0 --snapshot-update  # regenerate snapshots (without xdist), the
 ./scripts/docs.sh start              # docs with live reload
 ```
 
-Before finishing a change, run all of them except the snapshot update and the live reload.
+Before finishing a change, run:
+
+- `uv run ruff format`
+- `./scripts/lint.sh`
+- `uv run pytest`
+- `./scripts/docs.sh`
 
 ## Rules
 
 - **No breaking changes** to anything usable externally, i.e. everything without a `_` prefix:
   - classes, methods, signatures, return values
-  - types, constants, enum members, exceptions
+  - types, constants, exceptions
+  - enum members
   - behaviour that worked before
 - Allowed:
   - renames, if the old name stays as an alias (note it in the changelog)
   - new parameters, if they are optional and the default keeps the old behaviour
-  - turning a crash (uncaught built-in or `aiohttp` exception) into one of the package's exceptions
+  - turning a crash (uncaught built-in or `aiohttp` exception) into an `APIError` (or a subclass)
   - changing `_`-prefixed internals
-- New public names are exported in the package `__init__.py` (`__all__`)
-- **Python 3.13 minimum**: no syntax or features of newer versions (e.g. PEP 649, 750, 758)
+- **Python 3.13 minimum**, so no syntax or features of newer versions
 - Every `.py` file starts with (after the shebang of an executable script):
 
   ```python
@@ -41,6 +46,7 @@ Before finishing a change, run all of them except the snapshot update and the li
 
 - NumPy-style docstrings everywhere, also in tests
 - No lint or type suppressions (inline or in config), except the existing ignores in `ruff.toml`. Fix the code instead
+- New public names are exported in the package `__init__.py` (`__all__`)
 - Avoid `cast()`: narrow types with checks that also run at runtime (e.g. `isinstance`) or with generics
 - No real credentials or customer data, use placeholders like `"test"`
 - `git add` new files, CI only checks tracked files
@@ -48,16 +54,18 @@ Before finishing a change, run all of them except the snapshot update and the li
 
 ## Architecture
 
-- `api.py`: the client class and its request types
-  - login: `POST /service/j_security_check`, then `GET /service/v1.0/session` sets the `XSRF-TOKEN` cookie,
-    which is sent as `x-xsrf-token` header
-  - one central request method logs in lazily, retries once after re-login on `401` and maps all errors to the
-    package's exceptions
+- `constants.py`:
+  - URLs, headers and enums
+  - enum values are the exact strings the portal expects
+- `api.py`: `NetzOOEeServiceAPI` and its request types (`TypedDict`s)
+  - login: `POST /service/j_security_check`, then `GET /service/v1.0/session` sets the `XSRF-TOKEN` cookie
+  - the `XSRF-TOKEN` cookie is sent as `x-xsrf-token` header
+  - one central request method logs in lazily, retries once after re-login on `401` and maps all errors to
+    the package's exceptions
   - a passed `session` is never closed, an own session is closed on logout and on errors
-  - helpers are `_`-prefixed methods of the class that uses them (`@staticmethod` if they need no `self`),
-    not module-level functions
-- `constants.py`: URLs, headers, enums (values are the exact strings the portal expects)
 - `error.py`: exceptions
+- Helpers are `_`-prefixed methods of the class that uses them (`@staticmethod` if they need no `self`),
+  not module-level functions
 - Public methods:
   - `snake_case` parameters, mapped to the portal's `camelCase` inside the method
   - optional fields are only sent when set
@@ -67,10 +75,10 @@ Before finishing a change, run all of them except the snapshot update and the li
 
 ## Adding an endpoint
 
-1. Add new enums or constants
-2. Add the public method, built on the existing request helpers
-3. Cover happy and unhappy paths (see [Tests](#tests))
-4. Update `website/content/usage.md` if relevant, the API reference is generated from the docstrings
+1. `constants.py`: add new enums or constants
+2. `api.py`: add the public method, built on the existing request helpers
+3. `tests/test_api.py`: add tests for happy and unhappy paths (see [Tests](#tests))
+4. `website/content/usage.md`: update it if relevant, the API reference is generated from the docstrings
 
 ## Documentation
 
@@ -89,11 +97,17 @@ Before finishing a change, run all of them except the snapshot update and the li
 ## Tests
 
 - **100% test coverage** (lines and branches) is enforced
-- Mock HTTP with `aioresponses`, reuse the existing client factories and mock constants of the test module
-- Assert the recorded requests with snapshots
-- Test only through the public API:
-  - never call, patch or inspect `_`-prefixed methods or attributes
-  - drive the client through its public methods and mocked HTTP responses
+- Tests live in `tests/test_api.py`:
+  - mock HTTP with `aioresponses`
+  - reuse the client factories (`create_client`, `create_logged_in_client`) and the mock constants
+  - cover error responses and invalid input
+- The recorded requests are [syrupy](https://github.com/syrupy-project/syrupy) snapshots:
+  - `assert mock_api.requests == snapshot`
+  - create or update them with `uv run pytest -n0 --snapshot-update`
+  - review the `__snapshots__/*.ambr` diff and `git add` them
+- Never call, patch or inspect `_`-prefixed methods or attributes:
+  - call the public API (`NetzOOEeServiceAPI` methods)
+  - drive the client through mocked HTTP responses
   - assert return values, raised exceptions or the recorded requests
 
 ## Changelog and git
