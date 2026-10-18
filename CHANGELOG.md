@@ -7,11 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-- Added a preview image to the documentation for links shared on social media and removed the search page
-  from the documentation sitemap
-
 <!--start-->
 
 ## [1.2.0] - 2026-10-18
