@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+<!--start-->
+
+## [1.2.0] - 2026-10-18
+
 ### Added
 
 - Added the `detail` attribute to `APIError` with the original message, e.g. the response body or the content of the
@@ -60,8 +64,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   instead of an object), instead of returning `None` or the unexpected value
 - Kept the response body of a failed session request in `APIError.detail`
 - Fixed the re-login after a `401` response holding a connection of the session until the retry finished
-
-<!--start-->
 
 ## [1.1.1] - 2026-08-12
 
@@ -141,7 +143,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added the exceptions `APIError` (with the HTTP `status`), `AuthenticationError` and `InvalidJsonError`
 - Supported Python 3.13 and 3.14
 
-[Unreleased]: https://github.com/superbox-dev/netzooe_eservice_api/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/superbox-dev/netzooe_eservice_api/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/superbox-dev/netzooe_eservice_api/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/superbox-dev/netzooe_eservice_api/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/superbox-dev/netzooe_eservice_api/compare/v1.0.2...v1.1.0
 [1.0.2]: https://github.com/superbox-dev/netzooe_eservice_api/compare/v1.0.1...v1.0.2
