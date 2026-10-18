@@ -56,19 +56,23 @@ dynamic = ["version"]
 
 [project.urls]
 "Homepage" = "https://github.com/superbox-dev/netzooe_eservice_api"
-"Documentation" = "https://github.com/superbox-dev/netzooe_eservice_api"
+"Documentation" = "https://superbox-dev.github.io/netzooe_eservice_api/"
 "Issues" = "https://github.com/superbox-dev/netzooe_eservice_api/issues"
 "Source" = "https://github.com/superbox-dev/netzooe_eservice_api"
 
 [dependency-groups]
 dev = [
     { include-group = "build" },
+    { include-group = "docs" },
     { include-group = "lint" },
     { include-group = "test" },
 ]
 build = [
     "setuptools>=84.0.0",
     "build>=1.6.1",
+]
+docs = [
+    "griffelib>=2.3.2",
 ]
 lint = [
     "prek>=0.5.5",

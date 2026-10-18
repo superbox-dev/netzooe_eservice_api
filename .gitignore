@@ -28,3 +28,9 @@ coverage.xml
 build/
 dist/
 netzooe_eservice_api/version.py
+
+# website
+website/node_modules/
+website/build/
+website/.docusaurus/
+website/docs/

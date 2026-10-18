@@ -50,10 +50,21 @@ People *love* thorough bug reports. I'm not even kidding.
 
 ## Use a Consistent Coding Style
 
-Use [ruff](https://docs.astral.sh/ruff/formatter/) to make sure the code follows the style.
+Use [ruff](https://docs.astral.sh/ruff/) for formatting and linting and [ty](https://docs.astral.sh/ty/)
+for type checking. Run all linters at once with:
 
 ```bash
-uv run ruff format --check
+./scripts/lint.sh
+```
+
+## Build the documentation
+
+The documentation is a [Docusaurus](https://docusaurus.io) website in `website/` and needs Node.js.
+The API reference is generated from the docstrings:
+
+```bash
+./scripts/docs.sh        # build
+./scripts/docs.sh start  # live reload
 ```
 
 ## Test your code modification
