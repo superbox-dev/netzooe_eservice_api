@@ -36,6 +36,7 @@ class DocsGenerator:
         "(CHANGELOG.md)": "(changelog.md)",
         "(CONTRIBUTING.md)": "(contributing.md)",
         "(https://superbox-dev.github.io/netzooe_eservice_api/usage": "(usage.md",
+        "(CLAUDE.md)": "(https://github.com/superbox-dev/netzooe_eservice_api/blob/main/CLAUDE.md)",
         "(https://superbox-dev.github.io/netzooe_eservice_api/api": "(api.md",
     }
 

@@ -1,3 +1,77 @@
 # CLAUDE.md
 
-@AGENTS.md
+Async Python client (`aiohttp`) for the unofficial Netz Oberösterreich eService portal API (`eservice.netzooe.at`),
+published on PyPI and used by the Home Assistant integration.
+
+## Commands
+
+- Use `uv`, always via `uv run`
+- Setup: `./scripts/setup.sh`
+
+```bash
+uv run ruff format                   # format (lint.sh only checks)
+./scripts/lint.sh                    # all linters and type checks
+uv run pytest                        # tests + coverage
+uv run pytest -n0 --snapshot-update  # regenerate snapshots (serial only), then review the diff
+./scripts/docs.sh                    # docs (Docusaurus, needs Node.js)
+./scripts/docs.sh start              # docs with live reload
+```
+
+Before finishing a change, run all of them except the snapshot update and the live reload.
+
+## Rules
+
+- **No breaking changes** to anything without a `_` prefix (classes, methods, signatures, return values, types,
+  constants, exceptions, enum members, behaviour that worked before)
+  - only when asked, then as a major release
+  - allowed: renames with the old name as alias (note it in the changelog), new optional parameters whose default
+    keeps the old behaviour, turning a crash (uncaught built-in or `aiohttp` exception) into an `APIError` (or a
+    subclass)
+  - `TypedDict`s: new keys only as `NotRequired`, never remove, rename or retype keys
+- **Python 3.13 minimum**, no syntax or features of newer versions
+- Every `.py` file starts with (after the shebang of an executable script):
+
+  ```python
+  # Copyright 2026 Michael Hacker
+  # SPDX-License-Identifier: Apache-2.0
+  ```
+
+- NumPy-style docstrings everywhere, also in tests
+- No new lint/type suppressions (inline or in config) or `# pragma: no cover`, fix or test the code
+- New public names are exported in the package `__init__.py` (`__all__`)
+- No real credentials or customer data, use placeholders like `"test"`
+- `git add` new files, CI only checks tracked files
+- Never edit generated or CI-managed files (`version.py`, `coverage-badge.svg`)
+- **Never edit `CLAUDE.md` files or `.claude/skills/` on your own**, only when asked
+  - if a change conflicts with them, stop and ask
+
+## Architecture
+
+- `constants.py`: URLs, headers and enums, enum values are the exact strings the portal expects
+- `api.py`: `NetzOOEeServiceAPI` and its request types (`TypedDict`s)
+  - login: `POST /service/j_security_check`, then `GET /service/v1.0/session` sets the `XSRF-TOKEN` cookie, sent as
+    `x-xsrf-token` header
+  - one central request method logs in lazily, retries once after re-login on `401` and maps all errors to the
+    package's exceptions
+  - a passed `session` is never closed, an own session is closed on logout and on errors
+- Helpers in the package are `_`-prefixed methods of the class that uses them (`@staticmethod` if they need no
+  `self`), not module-level functions
+- Public methods:
+  - `snake_case` parameters, mapped to the portal's `camelCase` inside the method
+  - main parameters positional-or-keyword, further options keyword-only (after `*`), no `/` in new methods
+  - optional fields only sent when set
+  - enum parameters accept a member, a list of members or `None`
+  - return the raw JSON, pass the expected JSON type (`dict` or `list`) to the request helpers, which check it
+
+## Documentation
+
+- Update `website/content/` when the usage or behaviour changes, the API reference is generated
+- Keep the `<!--start-…-->` / `<!--end-…-->` markers in `README.md`, `CONTRIBUTING.md` and `CHANGELOG.md`
+- Keep `README.md` short (install, a minimal example), details go to `website/content/`
+
+## Changelog, versions and git
+
+- Every notable change gets an entry under `## [Unreleased]` in `CHANGELOG.md`, use the `changelog` skill
+- Version: comes from the git tag (`setuptools-scm`), only release when asked, use the `release` skill
+- Work on `develop`
+- Only commit or push when asked
