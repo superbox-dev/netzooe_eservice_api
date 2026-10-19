@@ -211,7 +211,7 @@ class TestHappyPathNetzOOEeServiceAPI:
         self,
         *,
         snapshot: SnapshotAssertion,
-        branch: list[ConsumptionsProfilesBranch] | ConsumptionsProfilesBranch | None,
+        branch: ConsumptionsProfilesBranch | list[ConsumptionsProfilesBranch] | None,
         active_only: bool | None,
         url: str,
     ) -> None:
@@ -250,7 +250,7 @@ class TestHappyPathNetzOOEeServiceAPI:
     async def test_consents(
         self,
         snapshot: SnapshotAssertion,
-        status: list[ConsentsStatus] | ConsentsStatus | None,
+        status: ConsentsStatus | list[ConsentsStatus] | None,
         url: str,
     ) -> None:
         """Test getting the consents with different status filters."""
@@ -288,7 +288,7 @@ class TestHappyPathNetzOOEeServiceAPI:
     async def test_consent_requests(
         self,
         snapshot: SnapshotAssertion,
-        status: list[ConsentRequestsStatus] | ConsentRequestsStatus | None,
+        status: ConsentRequestsStatus | list[ConsentRequestsStatus] | None,
         url: str,
     ) -> None:
         """Test getting the consent requests with different status filters."""
@@ -319,7 +319,7 @@ class TestHappyPathNetzOOEeServiceAPI:
     async def test_consumptions_profiles(
         self,
         snapshot: SnapshotAssertion,
-        branch: list[ConsumptionsProfilesBranch] | ConsumptionsProfilesBranch | None,
+        branch: ConsumptionsProfilesBranch | list[ConsumptionsProfilesBranch] | None,
         url: str,
     ) -> None:
         """Test getting the consumption profiles with different branch filters."""

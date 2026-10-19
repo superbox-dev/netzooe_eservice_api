@@ -50,7 +50,7 @@ class DocsGenerator:
 
         """
         self.output: Path = output
-        self.package: griffe.Object | griffe.Alias = griffe.load(
+        self.package: griffe.Alias | griffe.Object = griffe.load(
             PACKAGE,
             search_paths=[ROOT],
             docstring_parser=griffe.Parser.numpy,
@@ -101,7 +101,7 @@ class DocsGenerator:
         (self.output / path).write_text(f"{content}\n", encoding="utf-8")
 
     def _get_class(self, module: str, name: str) -> griffe.Class:
-        cls: griffe.Object | griffe.Alias = self.package[module][name]
+        cls: griffe.Alias | griffe.Object = self.package[module][name]
 
         if not isinstance(cls, griffe.Class):
             msg: str = f"{module}.{name} is not a class"
@@ -206,7 +206,7 @@ class DocsGenerator:
         return "\n".join(lines)
 
     def _render_constants(self) -> str:
-        module: griffe.Object | griffe.Alias = self.package["constants"]
+        module: griffe.Alias | griffe.Object = self.package["constants"]
         constants: list[str] = [
             f"{name}: {attribute.annotation} = {attribute.value}"
             for name, attribute in module.attributes.items()
@@ -388,7 +388,7 @@ class DocsGenerator:
     def _render_items(
         self,
         title: str,
-        items: list[griffe.DocstringParameter] | list[griffe.DocstringReturn] | list[griffe.DocstringRaise],
+        items: list[griffe.DocstringParameter] | list[griffe.DocstringRaise] | list[griffe.DocstringReturn],
     ) -> str:
         lines: list[str] = [f"**{title}**", ""]
 

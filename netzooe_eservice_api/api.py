@@ -60,8 +60,8 @@ class Pod(TypedDict):
 
     contract_account_number: str
     energy_community_id: NotRequired[str | None]
-    profile_type: ProfileType | str
-    best_available_granularity: Granularity | str
+    profile_type: str | ProfileType
+    best_available_granularity: str | Granularity
     meter_point_administration_number: str
     date_from: str
     date_to: str
@@ -202,7 +202,7 @@ class NetzOOEeServiceAPI:
         return APIError(f"Invalid value for {name}: {value!r}")
 
     @staticmethod
-    def _client_error(error: ClientError | TimeoutError | RuntimeError, /) -> APIError:
+    def _client_error(error: RuntimeError | TimeoutError | ClientError, /) -> APIError:
         """Map an aiohttp client error, a timeout or a request on a closed session to an `APIError`."""
         return APIError(str(error) or type(error).__name__)
 
@@ -426,7 +426,7 @@ class NetzOOEeServiceAPI:
 
     async def dashboard_headers(
         self,
-        branch: Iterable[ConsumptionsProfilesBranch] | ConsumptionsProfilesBranch | None = None,
+        branch: ConsumptionsProfilesBranch | Iterable[ConsumptionsProfilesBranch] | None = None,
         *,
         active_only: bool | None = None,
     ) -> list[dict[str, Any]]:
@@ -471,7 +471,7 @@ class NetzOOEeServiceAPI:
         return await self._get(f"{ESERVICE_PORTAL_API}/dashboard/headers{query}", list)
 
     async def consents(
-        self, status: Iterable[ConsentsStatus] | ConsentsStatus | None = None, /
+        self, status: ConsentsStatus | Iterable[ConsentsStatus] | None = None, /
     ) -> list[dict[str, Any]]:
         """Get the data sharing consents.
 
@@ -504,7 +504,7 @@ class NetzOOEeServiceAPI:
 
     async def consent_requests(
         self,
-        status: Iterable[ConsentRequestsStatus] | ConsentRequestsStatus | None = None,
+        status: ConsentRequestsStatus | Iterable[ConsentRequestsStatus] | None = None,
         /,
     ) -> list[dict[str, Any]]:
         """Get the data sharing consent requests, e.g. of energy communities.
@@ -540,7 +540,7 @@ class NetzOOEeServiceAPI:
 
     async def consumptions_profiles(
         self,
-        branch: Iterable[ConsumptionsProfilesBranch] | ConsumptionsProfilesBranch | None = None,
+        branch: ConsumptionsProfilesBranch | Iterable[ConsumptionsProfilesBranch] | None = None,
         *,
         active_only: bool | None = None,
     ) -> list[dict[str, Any]]:
