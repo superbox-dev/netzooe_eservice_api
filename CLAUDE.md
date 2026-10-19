@@ -63,6 +63,9 @@ Before finishing a change, run `ruff format`, `lint.sh` and `pytest`, in this or
   - a passed `session` is never closed, an own session is closed on logout and on errors
 - Helpers in the package are `_`-prefixed methods of the class that uses them (`@staticmethod` if they need no
   `self`), not module-level functions
+- Class member order: `__init__`, dunder methods, properties, public methods grouped by topic, helpers directly
+  below their first caller
+  - applies to new methods, existing ones only moved when asked
 - Public methods:
   - `snake_case` parameters, mapped to the portal's `camelCase` inside the method
   - main parameters positional-or-keyword, further options keyword-only (after `*`), no `/` in new methods
