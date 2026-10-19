@@ -46,6 +46,15 @@ MOCK_DASHBOARD_URL: str = "https://eservice.netzooe.at/service/v1.0/dashboard"
 MOCK_PROFILE_URL: str = "https://eservice.netzooe.at/service/v1.0/consumptions/profile/active"
 MOCK_API_URL: str = "https://eservice.netzooe.at/service/v1.0"
 
+MOCK_POD: Pod = Pod(
+    contract_account_number="123",
+    profile_type=ProfileType.ACTIVE_CURRENT,
+    best_available_granularity=Granularity.QUARTER_OF_AN_HOUR,
+    meter_point_administration_number="AT123",
+    date_from="2026-01-01",
+    date_to="2026-01-30",
+)
+
 
 def recorded_calls(mock_api: aioresponses, url_part: str, /) -> list[RequestCall]:
     """Return the recorded calls of all requests whose URL contains `url_part`."""
@@ -86,19 +95,28 @@ def mock_login(mock_api: aioresponses, /, *, xsrf: str = MOCK_XSRF, repeat: bool
     )
 
 
-async def create_client(mock_api: aioresponses, /, *, repeat: bool | int = False) -> NetzOOEeServiceAPI:
-    """Create a client with mocked login, session and logout endpoints."""
-    mock_login(mock_api, repeat=repeat)
+async def create_client(
+    mock_api: aioresponses,
+    /,
+    *,
+    repeat: bool | int = False,
+    mocks: bool = True,
+    session: ClientSession | None = None,
+) -> NetzOOEeServiceAPI:
+    """Create a client with mocked login, session and logout endpoints, or without any mocks if `mocks` is false."""
+    if mocks:
+        mock_login(mock_api, repeat=repeat)
 
-    mock_api.get(
-        MOCK_LOGOUT_URL,
-        status=200,
-        repeat=False,
-    )
+        mock_api.get(
+            MOCK_LOGOUT_URL,
+            status=200,
+            repeat=False,
+        )
 
     client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(
         username=MOCK_USERNAME,
         password=MOCK_CREDENTIAL,
+        session=session,
     )
 
     return client
@@ -134,7 +152,7 @@ class TestHappyPathNetzOOEeServiceAPI:
             mock_api.get(MOCK_DASHBOARD_URL, status=401, payload={})
             mock_api.get(MOCK_DASHBOARD_URL, status=200, payload={})
 
-            result = await client.dashboard()
+            result: dict[str, Any] = await client.dashboard()
             assert result == {}
             await client.logout()
 
@@ -147,7 +165,7 @@ class TestHappyPathNetzOOEeServiceAPI:
 
             mock_api.get(MOCK_DASHBOARD_URL, status=200, payload={})
 
-            result = await client.dashboard()
+            result: dict[str, Any] = await client.dashboard()
             assert result == {}
             await client.logout()
 
@@ -160,7 +178,7 @@ class TestHappyPathNetzOOEeServiceAPI:
 
             mock_api.get(MOCK_DASHBOARD_URL, status=200, payload={})
 
-            result = await client.dashboard()
+            result: dict[str, Any] = await client.dashboard()
             assert result == {}
             await client.logout()
 
@@ -185,7 +203,7 @@ class TestHappyPathNetzOOEeServiceAPI:
                     ConsumptionsProfilesBranch.GAS,
                 ],
                 False,
-                "https://eservice.netzooe.at/service/v1.0/dashboard/headers?branch=STROM,GAS&activeOnly=false",
+                "https://eservice.netzooe.at/service/v1.0/dashboard/headers?activeOnly=false",
             ),
         ],
     )
@@ -343,7 +361,9 @@ class TestHappyPathNetzOOEeServiceAPI:
 
             mock_api.get("https://eservice.netzooe.at/service/v1.0/contract-accounts/123/345", status=200, payload={})
 
-            result = await client.contract_accounts(business_partner_number="123", contract_account_number="345")
+            result: dict[str, Any] = await client.contract_accounts(
+                business_partner_number="123", contract_account_number="345"
+            )
             assert result == {}
             await client.logout()
 
@@ -551,7 +571,9 @@ class TestHappyPathNetzOOEeServiceAPI:
                 payload={},
             )
 
-            result = await client.contract_accounts(business_partner_number="1/2", contract_account_number="3?4")
+            result: dict[str, Any] = await client.contract_accounts(
+                business_partner_number="1/2", contract_account_number="3?4"
+            )
             assert result == {}
             await client.logout()
 
@@ -565,7 +587,7 @@ class TestHappyPathNetzOOEeServiceAPI:
             business_partner_number: Any = 123
             contract_account_number: Any = 345
 
-            result = await client.contract_accounts(
+            result: dict[str, Any] = await client.contract_accounts(
                 business_partner_number=business_partner_number,
                 contract_account_number=contract_account_number,
             )
@@ -668,7 +690,7 @@ class TestHappyPathNetzOOEeServiceAPI:
 
             await client.logout()
 
-            result = await client.dashboard()
+            result: dict[str, Any] = await client.dashboard()
             assert result == {}
             assert client.xsrf_token == MOCK_XSRF
             assert len(recorded_calls(mock_api, "j_security_check")) == logins + 1
@@ -765,6 +787,31 @@ class TestHappyPathNetzOOEeServiceAPI:
                 lambda client: client.consumptions_profiles((ConsumptionsProfilesBranch.GAS,)),
                 f"{MOCK_API_URL}/consumptions/profiles?branch=GAS",
             ),
+            (
+                lambda client: client.dashboard_headers({ConsumptionsProfilesBranch.ELECTRICITY}),
+                f"{MOCK_API_URL}/dashboard/headers?branch=STROM",
+            ),
+            (
+                lambda client: client.consumptions_profiles(
+                    [ConsumptionsProfilesBranch.GAS, ConsumptionsProfilesBranch.GAS],
+                ),
+                f"{MOCK_API_URL}/consumptions/profiles?branch=GAS",
+            ),
+            (
+                lambda client: client.consumptions_profiles(
+                    [ConsumptionsProfilesBranch.GAS, ConsumptionsProfilesBranch.ELECTRICITY],
+                    active_only=True,
+                ),
+                f"{MOCK_API_URL}/consumptions/profiles?activeOnly=true",
+            ),
+            (
+                lambda client: client.consents(status for status in [ConsentsStatus.ACTIVE]),
+                f"{MOCK_API_URL}/consents?status=ACTIVE",
+            ),
+            (
+                lambda client: client.consent_requests(set()),
+                f"{MOCK_API_URL}/consent-requests",
+            ),
         ],
     )
     async def test_empty_filter(
@@ -772,7 +819,7 @@ class TestHappyPathNetzOOEeServiceAPI:
         request_method: Callable[[NetzOOEeServiceAPI], Awaitable[list[dict[str, Any]]]],
         url: str,
     ) -> None:
-        """Test an empty filter list is no filter, the portal answers e.g. ``?branch=`` with 404, and a tuple works."""
+        """Test an empty filter or both branches are no filter, duplicates are removed and any iterable works."""
         with aioresponses() as mock_api:
             client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
 
@@ -805,7 +852,7 @@ class TestHappyPathNetzOOEeServiceAPI:
 
             mock_api.get(MOCK_DASHBOARD_URL, status=200, payload={})
 
-            result = await client.dashboard()
+            result: dict[str, Any] = await client.dashboard()
             assert result == {}
 
             calls: list[RequestCall] = recorded_calls(mock_api, "dashboard")
@@ -838,7 +885,7 @@ class TestHappyPathNetzOOEeServiceAPI:
                 )
                 client.xsrf_token = MOCK_OUTSIDE_XSRF
 
-                result = await client.dashboard()
+                result: dict[str, Any] = await client.dashboard()
                 assert result == {}
 
                 calls: list[RequestCall] = recorded_calls(mock_api, "dashboard")
@@ -887,7 +934,7 @@ class TestHappyPathNetzOOEeServiceAPI:
             assert await request == {}
             assert client.xsrf_token == ""
 
-            result = await client.dashboard()
+            result: dict[str, Any] = await client.dashboard()
             assert result == {}
             assert len(recorded_calls(mock_api, "j_security_check")) == logins + 1
 
@@ -920,7 +967,7 @@ class TestHappyPathNetzOOEeServiceAPI:
 
             assert client.xsrf_token == MOCK_XSRF
 
-            result = await client.dashboard()
+            result: dict[str, Any] = await client.dashboard()
             assert result == {}
             assert len(recorded_calls(mock_api, "j_security_check")) == 1
 
@@ -1080,7 +1127,7 @@ class TestUnhappyPathNetzOOEeServiceAPI:
 
             assert client.xsrf_token == MOCK_XSRF
 
-            result = await client.dashboard()
+            result: dict[str, Any] = await client.dashboard()
             assert result == {}
 
             assert len(recorded_calls(mock_api, "j_security_check")) == 1
@@ -1122,7 +1169,7 @@ class TestUnhappyPathNetzOOEeServiceAPI:
             await session.close()
             logins: int = len(recorded_calls(mock_api, "j_security_check"))
 
-            result = await client.dashboard()
+            result: dict[str, Any] = await client.dashboard()
             assert result == {}
 
             assert len(recorded_calls(mock_api, "j_security_check")) == logins + 1
@@ -1517,6 +1564,28 @@ class TestUnhappyPathNetzOOEeServiceAPI:
                 lambda client: client.consumptions_profile([], dimension="ENERGY"),
                 "Invalid value for dimension: 'ENERGY'",
             ),
+            (
+                lambda client: client.consents(ConsentRequestsStatus.CONFIRMED),
+                "Invalid value for status: <ConsentRequestsStatus.CONFIRMED: 'CONFIRMED'>",
+            ),
+            (
+                lambda client: client.dashboard_headers(5),
+                "Invalid value for branch: 5",
+            ),
+            (
+                lambda client: client.consumptions_profile([], dimension=Granularity.QUARTER_OF_AN_HOUR),
+                "Invalid value for dimension: <Granularity.QUARTER_OF_AN_HOUR: 'QUARTER_OF_AN_HOUR'>",
+            ),
+            (
+                lambda client: client.consumptions_profile([{**MOCK_POD, "profile_type": None}]),
+                "Invalid value for profile_type: None",
+            ),
+            (
+                lambda client: client.consumptions_profile(
+                    [{**MOCK_POD, "best_available_granularity": ProfileType.ACTIVE_CURRENT}],
+                ),
+                "Invalid value for best_available_granularity: <ProfileType.ACTIVE_CURRENT: 'ACTIVE_CURRENT'>",
+            ),
         ],
     )
     async def test_invalid_enum_value(
@@ -1524,7 +1593,7 @@ class TestUnhappyPathNetzOOEeServiceAPI:
         request_method: Callable[[NetzOOEeServiceAPI], Awaitable[Any]],
         message: str,
     ) -> None:
-        """Test a filter or dimension that is no enum member raises an API error before any request."""
+        """Test a filter, dimension or `Pod` value that is no member of its enum raises an API error."""
         with aioresponses() as mock_api:
             client: NetzOOEeServiceAPI = await create_client(mock_api)
 
@@ -1551,8 +1620,9 @@ class TestUnhappyPathNetzOOEeServiceAPI:
             await client.logout()
 
     @pytest.mark.parametrize("auto_login", [False, True])
-    async def test_logout_during_login(self, *, auto_login: bool) -> None:
-        """Test a logout between the login requests raises an API error instead of a RuntimeError of aiohttp."""
+    @pytest.mark.parametrize("passed_session", [False, True])
+    async def test_logout_during_login(self, *, auto_login: bool, passed_session: bool) -> None:
+        """Test a logout during the login cancels it, so it raises an API error and sets no token afterwards."""
 
         async def scenario(mock_api: aioresponses) -> None:
             started: asyncio.Event = asyncio.Event()
@@ -1564,61 +1634,76 @@ class TestUnhappyPathNetzOOEeServiceAPI:
                 return CallbackResult(status=200)
 
             mock_api.post(MOCK_LOGIN_URL, callback=security_check)
+            mock_api.get(MOCK_SESSION_URL, headers={"Set-Cookie": f"XSRF-TOKEN={MOCK_XSRF}; Path=/; Secure"})
             mock_api.get(MOCK_LOGOUT_URL, status=200)
 
-            client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(username=MOCK_USERNAME, password=MOCK_CREDENTIAL)
+            async with ClientSession() as session:
+                client: NetzOOEeServiceAPI = await create_client(
+                    mock_api,
+                    mocks=False,
+                    session=session if passed_session else None,
+                )
 
-            login: asyncio.Task[Any] = asyncio.create_task(client.dashboard() if auto_login else client.login())
-            await started.wait()
-            await client.logout()
-            release.set()
+                login: asyncio.Task[Any] = asyncio.create_task(client.dashboard() if auto_login else client.login())
+                await started.wait()
+                await client.logout()
+                release.set()
 
-            with pytest.raises(APIError) as error:
-                await login
+                with pytest.raises(APIError) as error:
+                    await login
 
-            assert type(error.value) is APIError
-            assert str(error.value) == "Session is closed"
-            assert client.xsrf_token == ""
+                assert type(error.value) is APIError
+                assert str(error.value) == "Logged out during the login"
+                assert client.xsrf_token == ""
+                assert recorded_calls(mock_api, "/session") == []
+                assert not session.closed
 
-            # The next request logs in on a new session.
-            mock_login(mock_api)
-            mock_api.get(MOCK_DASHBOARD_URL, status=200, payload={})
-            mock_api.get(MOCK_LOGOUT_URL, status=200)
+                # The next request logs in again.
+                mock_login(mock_api)
+                mock_api.get(MOCK_DASHBOARD_URL, status=200, payload={})
+                mock_api.get(MOCK_LOGOUT_URL, status=200)
 
-            result = await client.dashboard()
-            assert result == {}
+                result: dict[str, Any] = await client.dashboard()
+                assert result == {}
 
-            await client.logout()
+                await client.logout()
 
         assert await count_unclosed_sessions(scenario) == 0
 
-    async def test_logout_after_login_before_request(self) -> None:
-        """Test a logout after the automatic login but before the request raises an API error."""
+    @pytest.mark.parametrize("url", [MOCK_LOGIN_URL, MOCK_SESSION_URL])
+    async def test_passed_session_closed_during_login(self, url: str) -> None:
+        """Test a passed session that is closed during the login raises an API error instead of a RuntimeError."""
+        with aioresponses() as mock_api:
+            session: ClientSession = ClientSession()
 
-        async def scenario(mock_api: aioresponses) -> None:
-            started: asyncio.Event = asyncio.Event()
-            release: asyncio.Event = asyncio.Event()
-
-            async def session_request(_url: URL, **_kwargs: object) -> CallbackResult:
-                started.set()
-                await release.wait()
+            async def close_session(_url: URL, **_kwargs: object) -> CallbackResult:
+                await session.close()
                 return CallbackResult(status=200, headers={"Set-Cookie": f"XSRF-TOKEN={MOCK_XSRF}; Path=/; Secure"})
 
-            mock_api.post(MOCK_LOGIN_URL, status=200)
-            mock_api.get(MOCK_SESSION_URL, callback=session_request)
-            mock_api.get(MOCK_LOGOUT_URL, status=200)
+            mock_api.post(MOCK_LOGIN_URL, callback=close_session if url == MOCK_LOGIN_URL else None, status=200)
+            mock_api.get(MOCK_SESSION_URL, callback=close_session if url == MOCK_SESSION_URL else None, status=200)
 
-            client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(username=MOCK_USERNAME, password=MOCK_CREDENTIAL)
-
-            request: asyncio.Task[dict[str, Any]] = asyncio.create_task(client.dashboard())
-            await started.wait()
-            await client.logout()
-            release.set()
+            client: NetzOOEeServiceAPI = await create_client(mock_api, mocks=False, session=session)
 
             with pytest.raises(APIError) as error:
-                await request
+                await client.dashboard()
 
+            assert type(error.value) is APIError
             assert str(error.value) == "Session is closed"
             assert recorded_calls(mock_api, "dashboard") == []
+
+    @pytest.mark.parametrize("url", [MOCK_LOGIN_URL, MOCK_DASHBOARD_URL])
+    async def test_other_runtime_error(self, url: str) -> None:
+        """Test a RuntimeError that is not caused by a closed session is not hidden as an API error."""
+
+        async def scenario(mock_api: aioresponses) -> None:
+            client: NetzOOEeServiceAPI = await create_client(mock_api, mocks=url != MOCK_LOGIN_URL)
+
+            mock_api.add(url, "POST" if url == MOCK_LOGIN_URL else "GET", exception=RuntimeError("mocked error"))
+
+            with pytest.raises(RuntimeError, match="mocked error"):
+                await client.dashboard()
+
+            await client.logout()
 
         assert await count_unclosed_sessions(scenario) == 0

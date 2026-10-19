@@ -7,13 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Annotated the `branch` and `status` filters as `Iterable` instead of `list`, any iterable of members was already
+  accepted
+
 ### Fixed
 
-- An empty list as `branch` or `status` filter is no filter like `None`, `dashboard_headers([])` and
-  `consumptions_profiles([])` no longer raise an `APIError` with HTTP 404
-- A filter or `dimension` that is no enum member, e.g. a plain string like `"STROM"`, raises an `APIError` before
-  any request instead of an `AttributeError`
-- A `logout()` while a login is still running raises an `APIError` instead of a `RuntimeError` of aiohttp
+- Treated an empty list as `branch` or `status` filter like `None`, `dashboard_headers([])` and
+  `consumptions_profiles([])` raised an `APIError` with HTTP 404
+- Raised an `APIError` before any request for a filter, `dimension` or `Pod` value that is no member of its enum, e.g.
+  a plain string like `"STROM"` or a member of another enum, instead of an `AttributeError` or a request with a wrong
+  value, `Pod` values still accept strings
+- Cancelled a running login on `logout()`, so the login raises an `APIError` instead of a `RuntimeError` of aiohttp
+  and no longer sets a new XSRF token after the logout on a passed session
+- Raised an `APIError` instead of a `RuntimeError` of aiohttp for a passed session that was closed during the login
+- Sent no `branch` filter for both branches, the portal answered `dashboard_headers([ELECTRICITY, GAS])` and
+  `consumptions_profiles([ELECTRICITY, GAS])` with HTTP 404, and removed duplicate filter values
 
 <!--start-->
 

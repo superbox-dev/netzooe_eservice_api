@@ -1448,7 +1448,7 @@
     ]),
   })
 # ---
-# name: TestHappyPathNetzOOEeServiceAPI.test_dashboard_headers[branch2-False-https://eservice.netzooe.at/service/v1.0/dashboard/headers?branch=STROM,GAS&activeOnly=false]
+# name: TestHappyPathNetzOOEeServiceAPI.test_dashboard_headers[branch2-False-https://eservice.netzooe.at/service/v1.0/dashboard/headers?activeOnly=false]
   dict({
     tuple(
       'GET',
@@ -1469,7 +1469,7 @@
     ]),
     tuple(
       'GET',
-      URL('https://eservice.netzooe.at/service/v1.0/dashboard/headers?activeOnly=false&branch=STROM,GAS'),
+      URL('https://eservice.netzooe.at/service/v1.0/dashboard/headers?activeOnly=false'),
     ): list([
       RequestCall(
         args=tuple(
