@@ -6,3 +6,4 @@
   - always review the `__snapshots__/*.ambr` diff
 - Never call, patch or inspect `_`-prefixed methods or attributes, assert return values, exceptions or the recorded
   requests
+- `pytest.mark.parametrize` with `ids=` naming each case
