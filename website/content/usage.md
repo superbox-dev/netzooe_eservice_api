@@ -75,10 +75,10 @@ See the [API client](/api) for all parameters and return values.
 
 | Parameter                                            | Type                                                      | Description                                                                                                          |
 |------------------------------------------------------|-----------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------|
-| `branch`                                             | `ConsumptionsProfilesBranch`, a list of members or `None` | Only returns entries of these branches (`ELECTRICITY`, `GAS`). `None` returns all.                                   |
+| `branch`                                             | `ConsumptionsProfilesBranch`, a list of members or `None` | Only returns entries of these branches (`ELECTRICITY`, `GAS`). `None` or an empty list returns all.                  |
 | `active_only`                                        | `bool` or `None`                                          | `True` only returns active contract accounts or points of delivery. `None` returns all.                              |
-| `status` of `consents()`                             | `ConsentsStatus`, a list of members or `None`             | `REQUESTED`, `QR_CODE_SENT`, `ACTIVE`, `ACTIVE_UNCHANGEABLE`, `TIMEOUT`, `REVOKED`, `CONCLUDED`. `None` returns all. |
-| `status` of `consent_requests()`                     | `ConsentRequestsStatus`, a list of members or `None`      | `INITIAL`, `SENT`, `CONFIRMED`, `REJECTED`, `TIMEOUT`. `None` returns all.                                           |
+| `status` of `consents()`                             | `ConsentsStatus`, a list of members or `None`             | `REQUESTED`, `QR_CODE_SENT`, `ACTIVE`, `ACTIVE_UNCHANGEABLE`, `TIMEOUT`, `REVOKED`, `CONCLUDED`. `None` or `[]` returns all. |
+| `status` of `consent_requests()`                     | `ConsentRequestsStatus`, a list of members or `None`      | `INITIAL`, `SENT`, `CONFIRMED`, `REJECTED`, `TIMEOUT`. `None` or an empty list returns all.                          |
 | `business_partner_number`, `contract_account_number` | `str`                                                     | Numbers from `dashboard()`.                                                                                          |
 | `pods`                                               | `list[Pod]`                                               | Points of delivery and the time range to request, see [Consumption profile](#consumption-profile).                   |
 | `dimension`                                          | `ConsumptionsDimension`                                   | `ENERGY` (default), `POWER` or `VOLUME`.                                                                             |
@@ -119,4 +119,4 @@ All errors are subclasses of `APIError`, see [Errors](/errors):
 |-----------------------|---------------------------------------------------------------------------------------------------|
 | `AuthenticationError` | The credentials were rejected (HTTP 401), also after a new login                                  |
 | `InvalidJsonError`    | The response is not valid JSON, e.g. the maintenance page ("Wartungsseite")                       |
-| `APIError`            | Any other HTTP or connection error. `status` holds the HTTP status, `detail` the original message |
+| `APIError`            | Any other HTTP or connection error, or a filter or `dimension` that is no enum member (e.g. a plain string). `status` holds the HTTP status, `detail` the original message |

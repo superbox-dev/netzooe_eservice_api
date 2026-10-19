@@ -7,6 +7,7 @@ import gc
 import warnings
 from collections.abc import Awaitable
 from collections.abc import Callable
+from http import HTTPStatus
 from typing import Any
 
 import pytest
@@ -20,6 +21,7 @@ from yarl import URL
 
 from netzooe_eservice_api.api import NetzOOEeServiceAPI
 from netzooe_eservice_api.api import Pod
+from netzooe_eservice_api.constants import COMMON_HEADERS
 from netzooe_eservice_api.constants import ConsentRequestsStatus
 from netzooe_eservice_api.constants import ConsentsStatus
 from netzooe_eservice_api.constants import ConsumptionsDimension
@@ -34,7 +36,15 @@ MOCK_USERNAME: str = "test"
 MOCK_CREDENTIAL: str = "test"
 MOCK_XSRF: str = "mocked-token-value"
 MOCK_NEW_XSRF: str = "mocked-new-token-value"
+MOCK_OUTSIDE_XSRF: str = "mocked-outside-token-value"
 MOCK_UNKNOWN_STATUS: int = 520
+
+MOCK_LOGIN_URL: str = "https://eservice.netzooe.at/service/j_security_check"
+MOCK_SESSION_URL: str = "https://eservice.netzooe.at/service/v1.0/session"
+MOCK_LOGOUT_URL: str = "https://eservice.netzooe.at/service/logout"
+MOCK_DASHBOARD_URL: str = "https://eservice.netzooe.at/service/v1.0/dashboard"
+MOCK_PROFILE_URL: str = "https://eservice.netzooe.at/service/v1.0/consumptions/profile/active"
+MOCK_API_URL: str = "https://eservice.netzooe.at/service/v1.0"
 
 
 def recorded_calls(mock_api: aioresponses, url_part: str, /) -> list[RequestCall]:
@@ -58,25 +68,30 @@ async def count_unclosed_sessions(scenario: Callable[[aioresponses], Awaitable[N
     return sum("Unclosed client session" in str(warning.message) for warning in caught)
 
 
-async def create_client(mock_api: aioresponses, /, *, repeat: bool | int = False) -> NetzOOEeServiceAPI:
-    """Create a client with mocked login, session and logout endpoints."""
+def mock_login(mock_api: aioresponses, /, *, xsrf: str = MOCK_XSRF, repeat: bool | int = False) -> None:
+    """Mock a successful login whose session response sets the XSRF token `xsrf`."""
     mock_api.post(
-        "https://eservice.netzooe.at/service/j_security_check",
+        MOCK_LOGIN_URL,
         status=200,
         repeat=repeat,
     )
 
     mock_api.get(
-        "https://eservice.netzooe.at/service/v1.0/session",
+        MOCK_SESSION_URL,
         headers={
-            "Set-Cookie": "XSRF-TOKEN=mocked-token-value; Path=/; Secure",
+            "Set-Cookie": f"XSRF-TOKEN={xsrf}; Path=/; Secure",
         },
         status=200,
         repeat=repeat,
     )
 
+
+async def create_client(mock_api: aioresponses, /, *, repeat: bool | int = False) -> NetzOOEeServiceAPI:
+    """Create a client with mocked login, session and logout endpoints."""
+    mock_login(mock_api, repeat=repeat)
+
     mock_api.get(
-        "https://eservice.netzooe.at/service/logout",
+        MOCK_LOGOUT_URL,
         status=200,
         repeat=False,
     )
@@ -100,7 +115,6 @@ async def create_logged_in_client(mock_api: aioresponses, /, *, repeat: bool | i
 class TestHappyPathNetzOOEeServiceAPI:
     """Tests for successful API calls."""
 
-    @pytest.mark.asyncio
     async def test_login(self, snapshot: SnapshotAssertion) -> None:
         """Test login and logout set and reset the XSRF token."""
         with aioresponses() as mock_api:
@@ -112,14 +126,13 @@ class TestHappyPathNetzOOEeServiceAPI:
 
             assert mock_api.requests == snapshot
 
-    @pytest.mark.asyncio
     async def test_reconnect(self, snapshot: SnapshotAssertion) -> None:
         """Test a request logs in again after a 401 response."""
         with aioresponses() as mock_api:
             client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api, repeat=2)
 
-            mock_api.get("https://eservice.netzooe.at/service/v1.0/dashboard", status=401, payload={})
-            mock_api.get("https://eservice.netzooe.at/service/v1.0/dashboard", status=200, payload={})
+            mock_api.get(MOCK_DASHBOARD_URL, status=401, payload={})
+            mock_api.get(MOCK_DASHBOARD_URL, status=200, payload={})
 
             result = await client.dashboard()
             assert result == {}
@@ -127,13 +140,12 @@ class TestHappyPathNetzOOEeServiceAPI:
 
             assert mock_api.requests == snapshot
 
-    @pytest.mark.asyncio
     async def test_dashboard(self, snapshot: SnapshotAssertion) -> None:
         """Test getting the dashboard data."""
         with aioresponses() as mock_api:
             client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
 
-            mock_api.get("https://eservice.netzooe.at/service/v1.0/dashboard", status=200, payload={})
+            mock_api.get(MOCK_DASHBOARD_URL, status=200, payload={})
 
             result = await client.dashboard()
             assert result == {}
@@ -141,13 +153,12 @@ class TestHappyPathNetzOOEeServiceAPI:
 
             assert mock_api.requests == snapshot
 
-    @pytest.mark.asyncio
     async def test_dashboard_without_login(self, snapshot: SnapshotAssertion) -> None:
         """Test a request logs in automatically without a prior login."""
         with aioresponses() as mock_api:
             client: NetzOOEeServiceAPI = await create_client(mock_api)
 
-            mock_api.get("https://eservice.netzooe.at/service/v1.0/dashboard", status=200, payload={})
+            mock_api.get(MOCK_DASHBOARD_URL, status=200, payload={})
 
             result = await client.dashboard()
             assert result == {}
@@ -155,7 +166,6 @@ class TestHappyPathNetzOOEeServiceAPI:
 
             assert mock_api.requests == snapshot
 
-    @pytest.mark.asyncio
     @pytest.mark.parametrize(
         ("branch", "active_only", "url"),
         [
@@ -199,7 +209,6 @@ class TestHappyPathNetzOOEeServiceAPI:
 
             assert mock_api.requests == snapshot
 
-    @pytest.mark.asyncio
     @pytest.mark.parametrize(
         ("status", "url"),
         [
@@ -213,6 +222,10 @@ class TestHappyPathNetzOOEeServiceAPI:
             (
                 ConsentsStatus.ACTIVE,
                 "https://eservice.netzooe.at/service/v1.0/consents?status=ACTIVE",
+            ),
+            (
+                None,
+                "https://eservice.netzooe.at/service/v1.0/consents",
             ),
         ],
     )
@@ -234,7 +247,6 @@ class TestHappyPathNetzOOEeServiceAPI:
 
             assert mock_api.requests == snapshot
 
-    @pytest.mark.asyncio
     @pytest.mark.parametrize(
         ("status", "url"),
         [
@@ -273,7 +285,6 @@ class TestHappyPathNetzOOEeServiceAPI:
 
             assert mock_api.requests == snapshot
 
-    @pytest.mark.asyncio
     @pytest.mark.parametrize(
         ("branch", "url"),
         [
@@ -305,7 +316,6 @@ class TestHappyPathNetzOOEeServiceAPI:
 
             assert mock_api.requests == snapshot
 
-    @pytest.mark.asyncio
     async def test_consumptions_profiles_active_only(self, snapshot: SnapshotAssertion) -> None:
         """Test getting only the consumption profiles of active points of delivery."""
         with aioresponses() as mock_api:
@@ -326,7 +336,6 @@ class TestHappyPathNetzOOEeServiceAPI:
 
             assert mock_api.requests == snapshot
 
-    @pytest.mark.asyncio
     async def test_contract_account(self, snapshot: SnapshotAssertion) -> None:
         """Test getting the contract account data."""
         with aioresponses() as mock_api:
@@ -340,7 +349,6 @@ class TestHappyPathNetzOOEeServiceAPI:
 
             assert mock_api.requests == snapshot
 
-    @pytest.mark.asyncio
     @pytest.mark.parametrize(
         ("pods", "dimension"),
         [
@@ -384,6 +392,29 @@ class TestHappyPathNetzOOEeServiceAPI:
                 ],
                 ConsumptionsDimension.POWER,
             ),
+            (
+                [
+                    Pod(
+                        contract_account_number="123",
+                        energy_community_id=None,
+                        profile_type=ProfileType.ACTIVE_CURRENT,
+                        best_available_granularity=Granularity.QUARTER_OF_AN_HOUR,
+                        meter_point_administration_number="AT123",
+                        date_from="2026-01-01",
+                        date_to="2026-01-30",
+                    ),
+                    Pod(
+                        contract_account_number="456",
+                        energy_community_id="789",
+                        profile_type=ProfileType.ACTIVE_CURRENT,
+                        best_available_granularity=Granularity.QUARTER_OF_AN_HOUR,
+                        meter_point_administration_number="AT456",
+                        date_from="2026-01-01",
+                        date_to="2026-01-30",
+                    ),
+                ],
+                ConsumptionsDimension.ENERGY,
+            ),
         ],
     )
     async def test_consumptions_profile(
@@ -397,7 +428,7 @@ class TestHappyPathNetzOOEeServiceAPI:
             client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
 
             mock_api.post(
-                "https://eservice.netzooe.at/service/v1.0/consumptions/profile/active",
+                MOCK_PROFILE_URL,
                 status=200,
                 payload=[],
             )
@@ -408,14 +439,13 @@ class TestHappyPathNetzOOEeServiceAPI:
 
             assert mock_api.requests == snapshot
 
-    @pytest.mark.asyncio
     async def test_post_without_login(self) -> None:
         """Test a POST request as first call sends the XSRF token of the automatic login."""
         with aioresponses() as mock_api:
             client: NetzOOEeServiceAPI = await create_client(mock_api)
 
             mock_api.post(
-                "https://eservice.netzooe.at/service/v1.0/consumptions/profile/active",
+                MOCK_PROFILE_URL,
                 status=200,
                 payload=[],
             )
@@ -428,13 +458,12 @@ class TestHappyPathNetzOOEeServiceAPI:
 
             await client.logout()
 
-    @pytest.mark.asyncio
     async def test_concurrent_requests_login_once(self) -> None:
         """Test concurrent requests without a prior login share one login."""
         with aioresponses() as mock_api:
             client: NetzOOEeServiceAPI = await create_client(mock_api)
 
-            mock_api.get("https://eservice.netzooe.at/service/v1.0/dashboard", status=200, payload={}, repeat=2)
+            mock_api.get(MOCK_DASHBOARD_URL, status=200, payload={}, repeat=2)
 
             results = await asyncio.gather(client.dashboard(), client.dashboard())
             assert results == [{}, {}]
@@ -443,18 +472,12 @@ class TestHappyPathNetzOOEeServiceAPI:
 
             await client.logout()
 
-    @pytest.mark.asyncio
     async def test_concurrent_requests_relogin_once(self) -> None:
         """Test concurrent requests with an expired token share one re-login."""
         with aioresponses() as mock_api:
             client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
 
-            mock_api.post("https://eservice.netzooe.at/service/j_security_check", status=200)
-            mock_api.get(
-                "https://eservice.netzooe.at/service/v1.0/session",
-                headers={"Set-Cookie": f"XSRF-TOKEN={MOCK_NEW_XSRF}; Path=/; Secure"},
-                status=200,
-            )
+            mock_login(mock_api, xsrf=MOCK_NEW_XSRF)
             # Hold the first two responses back until both requests are in flight with the same expired token.
             barrier: asyncio.Barrier = asyncio.Barrier(2)
             calls: int = 0
@@ -469,7 +492,7 @@ class TestHappyPathNetzOOEeServiceAPI:
 
                 return CallbackResult(status=200, payload={})
 
-            mock_api.get("https://eservice.netzooe.at/service/v1.0/dashboard", callback=dashboard, repeat=4)
+            mock_api.get(MOCK_DASHBOARD_URL, callback=dashboard, repeat=4)
 
             logins: int = len(recorded_calls(mock_api, "j_security_check"))
 
@@ -481,18 +504,12 @@ class TestHappyPathNetzOOEeServiceAPI:
 
             await client.logout()
 
-    @pytest.mark.asyncio
     async def test_late_401_after_relogin(self) -> None:
         """Test a 401 response that arrives after another request already logged in again retries without a login."""
         with aioresponses() as mock_api:
             client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
 
-            mock_api.post("https://eservice.netzooe.at/service/j_security_check", status=200)
-            mock_api.get(
-                "https://eservice.netzooe.at/service/v1.0/session",
-                headers={"Set-Cookie": f"XSRF-TOKEN={MOCK_NEW_XSRF}; Path=/; Secure"},
-                status=200,
-            )
+            mock_login(mock_api, xsrf=MOCK_NEW_XSRF)
             # Set by the retry of the first request, i.e. after it logged in again.
             relogged_in: asyncio.Event = asyncio.Event()
             calls: int = 0
@@ -513,7 +530,7 @@ class TestHappyPathNetzOOEeServiceAPI:
                 relogged_in.set()
                 return CallbackResult(status=200, payload={})
 
-            mock_api.get("https://eservice.netzooe.at/service/v1.0/dashboard", callback=dashboard, repeat=4)
+            mock_api.get(MOCK_DASHBOARD_URL, callback=dashboard, repeat=4)
 
             logins: int = len(recorded_calls(mock_api, "j_security_check"))
 
@@ -523,19 +540,6 @@ class TestHappyPathNetzOOEeServiceAPI:
             assert len(recorded_calls(mock_api, "j_security_check")) == logins + 1
             await client.logout()
 
-    @pytest.mark.asyncio
-    async def test_consumptions_profiles_without_branch(self) -> None:
-        """Test getting the consumption profiles without passing a branch."""
-        with aioresponses() as mock_api:
-            client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
-
-            mock_api.get("https://eservice.netzooe.at/service/v1.0/consumptions/profiles", status=200, payload=[])
-
-            result: list[dict[str, Any]] = await client.consumptions_profiles()
-            assert result == []
-            await client.logout()
-
-    @pytest.mark.asyncio
     async def test_contract_account_quoted(self) -> None:
         """Test the path parameters of the contract account are URL encoded."""
         with aioresponses() as mock_api:
@@ -551,7 +555,6 @@ class TestHappyPathNetzOOEeServiceAPI:
             assert result == {}
             await client.logout()
 
-    @pytest.mark.asyncio
     async def test_contract_account_not_str(self) -> None:
         """Test the path parameters of the contract account still accept values that are not strings."""
         with aioresponses() as mock_api:
@@ -569,21 +572,15 @@ class TestHappyPathNetzOOEeServiceAPI:
             assert result == {}
             await client.logout()
 
-    @pytest.mark.asyncio
     async def test_login_still_logged_in(self, snapshot: SnapshotAssertion) -> None:
         """Test a login on a session that is still logged in logs out and logs in again."""
         with aioresponses() as mock_api:
             client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
 
-            mock_api.post("https://eservice.netzooe.at/service/j_security_check", status=404)
-            mock_api.get("https://eservice.netzooe.at/service/logout", status=200)
-            mock_api.post("https://eservice.netzooe.at/service/j_security_check", status=200)
-            mock_api.get(
-                "https://eservice.netzooe.at/service/v1.0/session",
-                headers={"Set-Cookie": f"XSRF-TOKEN={MOCK_NEW_XSRF}; Path=/; Secure"},
-                status=200,
-            )
-            mock_api.get("https://eservice.netzooe.at/service/logout", status=200)
+            mock_api.post(MOCK_LOGIN_URL, status=404)
+            mock_api.get(MOCK_LOGOUT_URL, status=200)
+            mock_login(mock_api, xsrf=MOCK_NEW_XSRF)
+            mock_api.get(MOCK_LOGOUT_URL, status=200)
 
             await client.login()
             assert client.xsrf_token == MOCK_NEW_XSRF
@@ -591,7 +588,6 @@ class TestHappyPathNetzOOEeServiceAPI:
 
             assert mock_api.requests == snapshot
 
-    @pytest.mark.asyncio
     async def test_logout_without_session(self) -> None:
         """Test logout without a session sends no request and resets the XSRF token."""
         with aioresponses() as mock_api:
@@ -603,7 +599,6 @@ class TestHappyPathNetzOOEeServiceAPI:
             assert client.xsrf_token == ""
             assert mock_api.requests == {}
 
-    @pytest.mark.asyncio
     async def test_passed_session_is_not_closed(self) -> None:
         """Test a passed session is not closed on logout."""
         with aioresponses() as mock_api:
@@ -621,7 +616,6 @@ class TestHappyPathNetzOOEeServiceAPI:
 
                 assert not session.closed
 
-    @pytest.mark.asyncio
     async def test_passed_closed_session(self) -> None:
         """Test a passed but closed session is replaced by an own session that is closed on logout."""
 
@@ -644,11 +638,300 @@ class TestHappyPathNetzOOEeServiceAPI:
 
         assert await count_unclosed_sessions(scenario) == 0
 
+    async def test_post_reconnect_sends_new_token(self) -> None:
+        """Test the retry of a POST request after a 401 response sends the XSRF token of the new login."""
+        with aioresponses() as mock_api:
+            client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
+
+            mock_login(mock_api, xsrf=MOCK_NEW_XSRF)
+            mock_api.post(MOCK_PROFILE_URL, status=401, payload={})
+            mock_api.post(MOCK_PROFILE_URL, status=200, payload=[])
+
+            result: list[dict[str, Any]] = await client.consumptions_profile(pods=[])
+            assert result == []
+
+            calls: list[RequestCall] = recorded_calls(mock_api, "profile/active")
+            assert [call.kwargs["headers"]["x-xsrf-token"] for call in calls] == [MOCK_XSRF, MOCK_NEW_XSRF]
+            assert calls[0].kwargs["json"] == calls[1].kwargs["json"]
+
+            await client.logout()
+
+    async def test_request_after_logout(self) -> None:
+        """Test a request after a logout logs in again on a new own session that is closed on the next logout."""
+
+        async def scenario(mock_api: aioresponses) -> None:
+            client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api, repeat=2)
+            logins: int = len(recorded_calls(mock_api, "j_security_check"))
+
+            mock_api.get(MOCK_DASHBOARD_URL, status=200, payload={})
+            mock_api.get(MOCK_LOGOUT_URL, status=200)
+
+            await client.logout()
+
+            result = await client.dashboard()
+            assert result == {}
+            assert client.xsrf_token == MOCK_XSRF
+            assert len(recorded_calls(mock_api, "j_security_check")) == logins + 1
+
+            await client.logout()
+
+        assert await count_unclosed_sessions(scenario) == 0
+
+    async def test_logout_twice(self) -> None:
+        """Test a second logout after the own session is closed sends no request."""
+        with aioresponses() as mock_api:
+            client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
+
+            await client.logout()
+            await client.logout()
+
+            assert len(recorded_calls(mock_api, "logout")) == 1
+            assert client.xsrf_token == ""
+
+    async def test_login_after_failed_login(self) -> None:
+        """Test a login after a failed login is not answered with the result of the failed one."""
+        with aioresponses() as mock_api:
+            mock_api.post(MOCK_LOGIN_URL, status=401)
+            mock_login(mock_api)
+
+            client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(username=MOCK_USERNAME, password=MOCK_CREDENTIAL)
+
+            with pytest.raises(AuthenticationError):
+                await client.login()
+
+            await client.login()
+            assert client.xsrf_token == MOCK_XSRF
+
+            mock_api.get(MOCK_LOGOUT_URL, status=200)
+            await client.logout()
+
+    async def test_cancelled_login_caller(self) -> None:
+        """Test cancelling one caller of a shared login does not cancel the login of the other callers."""
+        with aioresponses() as mock_api:
+            started: asyncio.Event = asyncio.Event()
+            release: asyncio.Event = asyncio.Event()
+
+            async def security_check(_url: URL, **_kwargs: object) -> CallbackResult:
+                started.set()
+                await release.wait()
+                return CallbackResult(status=200)
+
+            mock_api.post(MOCK_LOGIN_URL, callback=security_check)
+            mock_api.get(
+                MOCK_SESSION_URL,
+                headers={"Set-Cookie": f"XSRF-TOKEN={MOCK_XSRF}; Path=/; Secure"},
+                status=200,
+            )
+            mock_api.get(MOCK_LOGOUT_URL, status=200)
+
+            client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(username=MOCK_USERNAME, password=MOCK_CREDENTIAL)
+
+            cancelled: asyncio.Task[None] = asyncio.create_task(client.login())
+            waiting: asyncio.Task[None] = asyncio.create_task(client.login())
+            await started.wait()
+
+            cancelled.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await cancelled
+
+            release.set()
+            await waiting
+
+            assert client.xsrf_token == MOCK_XSRF
+            assert len(recorded_calls(mock_api, "j_security_check")) == 1
+
+            await client.logout()
+
+    @pytest.mark.parametrize(
+        ("request_method", "url"),
+        [
+            (
+                lambda client: client.dashboard_headers([]),
+                f"{MOCK_API_URL}/dashboard/headers",
+            ),
+            (
+                lambda client: client.consents([]),
+                f"{MOCK_API_URL}/consents",
+            ),
+            (
+                lambda client: client.consent_requests([]),
+                f"{MOCK_API_URL}/consent-requests",
+            ),
+            (
+                lambda client: client.consumptions_profiles([], active_only=True),
+                f"{MOCK_API_URL}/consumptions/profiles?activeOnly=true",
+            ),
+            (
+                lambda client: client.consumptions_profiles((ConsumptionsProfilesBranch.GAS,)),
+                f"{MOCK_API_URL}/consumptions/profiles?branch=GAS",
+            ),
+        ],
+    )
+    async def test_empty_filter(
+        self,
+        request_method: Callable[[NetzOOEeServiceAPI], Awaitable[list[dict[str, Any]]]],
+        url: str,
+    ) -> None:
+        """Test an empty filter list is no filter, the portal answers e.g. ``?branch=`` with 404, and a tuple works."""
+        with aioresponses() as mock_api:
+            client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
+
+            mock_api.get(url, status=200, payload=[])
+
+            result: list[dict[str, Any]] = await request_method(client)
+            assert result == []
+            assert len(recorded_calls(mock_api, url.removeprefix(MOCK_API_URL))) == 1
+
+            await client.logout()
+
+    async def test_headers(self) -> None:
+        """Test the headers contain the common headers, the content type and the current XSRF token."""
+        with aioresponses() as mock_api:
+            client: NetzOOEeServiceAPI = await create_client(mock_api)
+
+            assert client.headers == {**COMMON_HEADERS, "Content-Type": "application/json", "x-xsrf-token": ""}
+
+            await client.login()
+            assert client.headers["x-xsrf-token"] == MOCK_XSRF
+
+            await client.logout()
+            assert client.headers["x-xsrf-token"] == ""
+
+    async def test_xsrf_token_set_from_outside(self) -> None:
+        """Test an XSRF token set from outside is discarded on a new own session, which has none of its cookies."""
+        with aioresponses() as mock_api:
+            client: NetzOOEeServiceAPI = await create_client(mock_api)
+            client.xsrf_token = MOCK_OUTSIDE_XSRF
+
+            mock_api.get(MOCK_DASHBOARD_URL, status=200, payload={})
+
+            result = await client.dashboard()
+            assert result == {}
+
+            calls: list[RequestCall] = recorded_calls(mock_api, "dashboard")
+            assert calls[0].kwargs["headers"]["x-xsrf-token"] == MOCK_XSRF
+            assert len(recorded_calls(mock_api, "j_security_check")) == 1
+
+            await client.logout()
+
+    @pytest.mark.parametrize(
+        ("statuses", "tokens"),
+        [
+            ([200], [MOCK_OUTSIDE_XSRF]),
+            ([401, 200], [MOCK_OUTSIDE_XSRF, MOCK_XSRF]),
+        ],
+    )
+    async def test_xsrf_token_set_from_outside_passed_session(self, statuses: list[int], tokens: list[str]) -> None:
+        """Test an XSRF token set from outside on a passed session is sent, and replaced by a login after a 401."""
+        with aioresponses() as mock_api:
+            create_client_mocks: NetzOOEeServiceAPI = await create_client(mock_api)
+            del create_client_mocks
+
+            for status in statuses:
+                mock_api.get(MOCK_DASHBOARD_URL, status=status, payload={})
+
+            async with ClientSession() as session:
+                client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(
+                    username=MOCK_USERNAME,
+                    password=MOCK_CREDENTIAL,
+                    session=session,
+                )
+                client.xsrf_token = MOCK_OUTSIDE_XSRF
+
+                result = await client.dashboard()
+                assert result == {}
+
+                calls: list[RequestCall] = recorded_calls(mock_api, "dashboard")
+                assert [call.kwargs["headers"]["x-xsrf-token"] for call in calls] == tokens
+                assert len(recorded_calls(mock_api, "j_security_check")) == len(statuses) - 1
+
+                await client.logout()
+
+    async def test_login_still_logged_in_logout_failed(self) -> None:
+        """Test a failed logout of a still logged in session is ignored, the second login decides."""
+        with aioresponses() as mock_api:
+            mock_api.post(MOCK_LOGIN_URL, status=404)
+            mock_api.get(MOCK_LOGOUT_URL, status=500, body="mocked body")
+            mock_login(mock_api)
+            mock_api.get(MOCK_LOGOUT_URL, status=200)
+
+            client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(username=MOCK_USERNAME, password=MOCK_CREDENTIAL)
+
+            await client.login()
+            assert client.xsrf_token == MOCK_XSRF
+
+            await client.logout()
+
+    async def test_logout_during_request(self) -> None:
+        """Test a logout while a request is in flight resets the token, so the next request logs in again."""
+        with aioresponses() as mock_api:
+            client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api, repeat=2)
+            logins: int = len(recorded_calls(mock_api, "j_security_check"))
+
+            started: asyncio.Event = asyncio.Event()
+            release: asyncio.Event = asyncio.Event()
+
+            async def dashboard(_url: URL, **_kwargs: object) -> CallbackResult:
+                started.set()
+                await release.wait()
+                return CallbackResult(status=200, payload={})
+
+            mock_api.get(MOCK_DASHBOARD_URL, callback=dashboard, repeat=2)
+            mock_api.get(MOCK_LOGOUT_URL, status=200)
+
+            request: asyncio.Task[dict[str, Any]] = asyncio.create_task(client.dashboard())
+            await started.wait()
+            await client.logout()
+            release.set()
+
+            assert await request == {}
+            assert client.xsrf_token == ""
+
+            result = await client.dashboard()
+            assert result == {}
+            assert len(recorded_calls(mock_api, "j_security_check")) == logins + 1
+
+            await client.logout()
+
+    async def test_cancelled_request(self) -> None:
+        """Test a cancelled request is not raised as an API error and keeps the session and its login."""
+
+        async def scenario(mock_api: aioresponses) -> None:
+            client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
+
+            started: asyncio.Event = asyncio.Event()
+
+            async def dashboard(_url: URL, **_kwargs: object) -> CallbackResult:
+                # The cancelled call keeps the mock registered, only the first call never answers.
+                if not started.is_set():
+                    started.set()
+                    await asyncio.Event().wait()
+
+                return CallbackResult(status=200, payload={})
+
+            mock_api.get(MOCK_DASHBOARD_URL, callback=dashboard, repeat=True)
+
+            request: asyncio.Task[dict[str, Any]] = asyncio.create_task(client.dashboard())
+            await started.wait()
+            request.cancel()
+
+            with pytest.raises(asyncio.CancelledError):
+                await request
+
+            assert client.xsrf_token == MOCK_XSRF
+
+            result = await client.dashboard()
+            assert result == {}
+            assert len(recorded_calls(mock_api, "j_security_check")) == 1
+
+            await client.logout()
+
+        assert await count_unclosed_sessions(scenario) == 0
+
 
 class TestUnhappyPathNetzOOEeServiceAPI:
     """Tests for failing API calls."""
 
-    @pytest.mark.asyncio
     @pytest.mark.parametrize(
         ("exception", "status", "message"),
         [
@@ -674,7 +957,7 @@ class TestUnhappyPathNetzOOEeServiceAPI:
         """Test a failed login raises the matching error."""
         with aioresponses() as mock_api:
             mock_api.post(
-                "https://eservice.netzooe.at/service/j_security_check",
+                MOCK_LOGIN_URL,
                 status=status,
             )
 
@@ -691,17 +974,16 @@ class TestUnhappyPathNetzOOEeServiceAPI:
 
             assert mock_api.requests == snapshot
 
-    @pytest.mark.asyncio
     async def test_session_failed(self, snapshot: SnapshotAssertion) -> None:
         """Test a failed session request raises an API error."""
         with aioresponses() as mock_api:
             mock_api.post(
-                "https://eservice.netzooe.at/service/j_security_check",
+                MOCK_LOGIN_URL,
                 status=200,
             )
 
             mock_api.get(
-                "https://eservice.netzooe.at/service/v1.0/session",
+                MOCK_SESSION_URL,
                 status=401,
                 body="mocked body",
             )
@@ -720,13 +1002,20 @@ class TestUnhappyPathNetzOOEeServiceAPI:
 
             assert mock_api.requests == snapshot
 
-    @pytest.mark.asyncio
-    async def test_session_without_xsrf_cookie(self) -> None:
-        """Test a session response without an XSRF cookie raises an API error and closes the own session."""
+    @pytest.mark.parametrize(
+        "headers",
+        [
+            {},
+            {"Set-Cookie": "XSRF-TOKEN=; Path=/; Secure"},
+            {"Set-Cookie": "OTHER=mocked-value; Path=/; Secure"},
+        ],
+    )
+    async def test_session_without_xsrf_cookie(self, headers: dict[str, str]) -> None:
+        """Test a session response without a non-empty XSRF cookie raises an API error and closes the own session."""
 
         async def scenario(mock_api: aioresponses) -> None:
-            mock_api.post("https://eservice.netzooe.at/service/j_security_check", status=200)
-            mock_api.get("https://eservice.netzooe.at/service/v1.0/session", status=200)
+            mock_api.post(MOCK_LOGIN_URL, status=200)
+            mock_api.get(MOCK_SESSION_URL, status=200, headers=headers)
 
             client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(
                 username=MOCK_USERNAME,
@@ -741,30 +1030,30 @@ class TestUnhappyPathNetzOOEeServiceAPI:
 
         assert await count_unclosed_sessions(scenario) == 0
 
-    @pytest.mark.asyncio
     async def test_reconnect_failed(self) -> None:
         """Test a second 401 response raises an authentication error."""
         with aioresponses() as mock_api:
             client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api, repeat=2)
+            logins: int = len(recorded_calls(mock_api, "j_security_check"))
 
-            mock_api.get("https://eservice.netzooe.at/service/v1.0/dashboard", status=401, repeat=2, payload={})
+            mock_api.get(MOCK_DASHBOARD_URL, status=401, repeat=2, payload={})
 
-            with pytest.raises(APIError) as error:
+            with pytest.raises(AuthenticationError) as error:
                 await client.dashboard()
 
             assert str(error.value) == "401 Unauthorized: No permission -- see authorization schemes"
             assert client.xsrf_token == ""
+            assert len(recorded_calls(mock_api, "j_security_check")) == logins + 1
 
             await client.logout()
 
-    @pytest.mark.asyncio
     async def test_client_error(self) -> None:
         """Test an aiohttp client error is raised as an API error."""
         with aioresponses() as mock_api:
             client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
 
             mock_api.get(
-                "https://eservice.netzooe.at/service/v1.0/dashboard",
+                MOCK_DASHBOARD_URL,
                 exception=ClientError("mocked error"),
             )
 
@@ -775,17 +1064,16 @@ class TestUnhappyPathNetzOOEeServiceAPI:
 
             await client.logout()
 
-    @pytest.mark.asyncio
     async def test_client_error_keeps_login(self) -> None:
         """Test a client error keeps the session and its login, so the next request does not log in again."""
         with aioresponses() as mock_api:
             client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api, repeat=2)
 
             mock_api.get(
-                "https://eservice.netzooe.at/service/v1.0/dashboard",
+                MOCK_DASHBOARD_URL,
                 exception=ClientError("mocked error"),
             )
-            mock_api.get("https://eservice.netzooe.at/service/v1.0/dashboard", status=200, payload={})
+            mock_api.get(MOCK_DASHBOARD_URL, status=200, payload={})
 
             with pytest.raises(APIError):
                 await client.dashboard()
@@ -798,11 +1086,10 @@ class TestUnhappyPathNetzOOEeServiceAPI:
             assert len(recorded_calls(mock_api, "j_security_check")) == 1
             await client.logout()
 
-    @pytest.mark.asyncio
     async def test_concurrent_requests_failed_login_once(self) -> None:
         """Test concurrent requests with rejected credentials share one failed login instead of logging in each."""
         with aioresponses() as mock_api:
-            mock_api.post("https://eservice.netzooe.at/service/j_security_check", status=401, repeat=True)
+            mock_api.post(MOCK_LOGIN_URL, status=401, repeat=True)
 
             client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(username=MOCK_USERNAME, password=MOCK_CREDENTIAL)
 
@@ -816,7 +1103,6 @@ class TestUnhappyPathNetzOOEeServiceAPI:
             assert [type(result) for result in results] == [AuthenticationError] * 3
             assert len(recorded_calls(mock_api, "j_security_check")) == 1
 
-    @pytest.mark.asyncio
     async def test_passed_session_closed_after_login(self) -> None:
         """Test a request logs in again if the passed session was closed after the login."""
 
@@ -824,7 +1110,7 @@ class TestUnhappyPathNetzOOEeServiceAPI:
             create_client_mocks: NetzOOEeServiceAPI = await create_client(mock_api, repeat=2)
             del create_client_mocks
 
-            mock_api.get("https://eservice.netzooe.at/service/v1.0/dashboard", status=200, payload={})
+            mock_api.get(MOCK_DASHBOARD_URL, status=200, payload={})
 
             session: ClientSession = ClientSession()
             client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(
@@ -844,14 +1130,13 @@ class TestUnhappyPathNetzOOEeServiceAPI:
 
         assert await count_unclosed_sessions(scenario) == 0
 
-    @pytest.mark.asyncio
     async def test_internal_server_error(self) -> None:
         """Test an internal server error is raised as an API error."""
         with aioresponses() as mock_api:
             client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
 
             mock_api.get(
-                "https://eservice.netzooe.at/service/v1.0/dashboard",
+                MOCK_DASHBOARD_URL,
                 status=500,
                 body="mocked body",
             )
@@ -864,7 +1149,6 @@ class TestUnhappyPathNetzOOEeServiceAPI:
 
             await client.logout()
 
-    @pytest.mark.asyncio
     @pytest.mark.parametrize(
         ("body", "content_type"),
         [
@@ -884,7 +1168,7 @@ class TestUnhappyPathNetzOOEeServiceAPI:
             client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
 
             mock_api.get(
-                "https://eservice.netzooe.at/service/v1.0/dashboard",
+                MOCK_DASHBOARD_URL,
                 status=200,
                 body=body,
                 content_type=content_type,
@@ -898,7 +1182,6 @@ class TestUnhappyPathNetzOOEeServiceAPI:
 
             await client.logout()
 
-    @pytest.mark.asyncio
     @pytest.mark.parametrize(
         ("status", "exception"),
         [
@@ -912,7 +1195,7 @@ class TestUnhappyPathNetzOOEeServiceAPI:
             client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
 
             mock_api.get(
-                "https://eservice.netzooe.at/service/v1.0/dashboard",
+                MOCK_DASHBOARD_URL,
                 status=status,
                 body="mocked body \xfc".encode("latin-1"),
                 content_type="application/json",
@@ -926,29 +1209,43 @@ class TestUnhappyPathNetzOOEeServiceAPI:
 
             await client.logout()
 
-    @pytest.mark.asyncio
-    async def test_unexpected_json_shape(self) -> None:
-        """Test a JSON array where an object is expected raises an invalid JSON error instead of returning it."""
+    @pytest.mark.parametrize(
+        ("request_method", "url", "body"),
+        [
+            (NetzOOEeServiceAPI.dashboard, MOCK_DASHBOARD_URL, "[]"),
+            (NetzOOEeServiceAPI.dashboard, MOCK_DASHBOARD_URL, "null"),
+            (NetzOOEeServiceAPI.dashboard, MOCK_DASHBOARD_URL, "1"),
+            (NetzOOEeServiceAPI.dashboard, MOCK_DASHBOARD_URL, '"mocked"'),
+            (NetzOOEeServiceAPI.consents, "https://eservice.netzooe.at/service/v1.0/consents", "{}"),
+            (NetzOOEeServiceAPI.consents, "https://eservice.netzooe.at/service/v1.0/consents", "true"),
+        ],
+    )
+    async def test_unexpected_json_shape(
+        self,
+        request_method: Callable[[NetzOOEeServiceAPI], Awaitable[Any]],
+        url: str,
+        body: str,
+    ) -> None:
+        """Test valid JSON of another shape than expected raises an invalid JSON error instead of returning it."""
         with aioresponses() as mock_api:
             client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
 
-            mock_api.get("https://eservice.netzooe.at/service/v1.0/dashboard", status=200, payload=[])
+            mock_api.get(url, status=200, body=body, content_type="application/json")
 
             with pytest.raises(InvalidJsonError) as error:
-                await client.dashboard()
+                await request_method(client)
 
-            assert error.value.detail == "[]"
+            assert error.value.detail == body
 
             await client.logout()
 
-    @pytest.mark.asyncio
     async def test_empty_body(self) -> None:
         """Test a successful response with an empty body raises an invalid JSON error instead of returning None."""
         with aioresponses() as mock_api:
             client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
 
             mock_api.get(
-                "https://eservice.netzooe.at/service/v1.0/dashboard",
+                MOCK_DASHBOARD_URL,
                 status=200,
                 body="",
                 content_type="application/json",
@@ -961,14 +1258,13 @@ class TestUnhappyPathNetzOOEeServiceAPI:
 
             await client.logout()
 
-    @pytest.mark.asyncio
     async def test_unknown_status(self) -> None:
         """Test a status code that is not part of HTTPStatus is raised as an API error."""
         with aioresponses() as mock_api:
             client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
 
             mock_api.get(
-                "https://eservice.netzooe.at/service/v1.0/dashboard",
+                MOCK_DASHBOARD_URL,
                 status=MOCK_UNKNOWN_STATUS,
                 body="mocked body",
             )
@@ -982,13 +1278,12 @@ class TestUnhappyPathNetzOOEeServiceAPI:
 
             await client.logout()
 
-    @pytest.mark.asyncio
     async def test_timeout(self) -> None:
         """Test a timeout is raised as an API error."""
         with aioresponses() as mock_api:
             client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
 
-            mock_api.get("https://eservice.netzooe.at/service/v1.0/dashboard", exception=TimeoutError())
+            mock_api.get(MOCK_DASHBOARD_URL, exception=TimeoutError())
 
             with pytest.raises(APIError) as error:
                 await client.dashboard()
@@ -997,34 +1292,40 @@ class TestUnhappyPathNetzOOEeServiceAPI:
 
             await client.logout()
 
-    @pytest.mark.asyncio
-    async def test_login_client_error(self) -> None:
-        """Test an aiohttp client error on login is raised as an API error."""
-        with aioresponses() as mock_api:
-            mock_api.post(
-                "https://eservice.netzooe.at/service/j_security_check",
-                exception=ClientError("mocked error"),
-            )
+    @pytest.mark.parametrize(
+        ("url", "exception", "message"),
+        [
+            (MOCK_LOGIN_URL, ClientError("mocked error"), "mocked error"),
+            (MOCK_LOGIN_URL, TimeoutError(), "TimeoutError"),
+            (MOCK_SESSION_URL, ClientError("mocked error"), "mocked error"),
+        ],
+    )
+    async def test_login_client_error(self, url: str, exception: Exception, message: str) -> None:
+        """Test an aiohttp client error or a timeout on login is raised as an API error and closes the own session."""
+
+        async def scenario(mock_api: aioresponses) -> None:
+            if url == MOCK_SESSION_URL:
+                mock_api.post(MOCK_LOGIN_URL, status=200)
+
+            mock_api.add(url, "POST" if url == MOCK_LOGIN_URL else "GET", exception=exception)
 
             client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(username=MOCK_USERNAME, password=MOCK_CREDENTIAL)
 
             with pytest.raises(APIError) as error:
                 await client.login()
 
-            assert str(error.value) == "mocked error"
+            assert type(error.value) is APIError
+            assert str(error.value) == message
+            assert client.xsrf_token == ""
 
-    @pytest.mark.asyncio
+        assert await count_unclosed_sessions(scenario) == 0
+
     async def test_logout_failed(self) -> None:
         """Test a failed logout request raises an API error and still resets the client."""
 
         async def scenario(mock_api: aioresponses) -> None:
-            mock_api.post("https://eservice.netzooe.at/service/j_security_check", status=200)
-            mock_api.get(
-                "https://eservice.netzooe.at/service/v1.0/session",
-                headers={"Set-Cookie": "XSRF-TOKEN=mocked-token-value; Path=/; Secure"},
-                status=200,
-            )
-            mock_api.get("https://eservice.netzooe.at/service/logout", status=500, body="mocked body")
+            mock_login(mock_api)
+            mock_api.get(MOCK_LOGOUT_URL, status=500, body="mocked body")
 
             client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(username=MOCK_USERNAME, password=MOCK_CREDENTIAL)
             await client.login()
@@ -1038,20 +1339,14 @@ class TestUnhappyPathNetzOOEeServiceAPI:
 
         assert await count_unclosed_sessions(scenario) == 0
 
-    @pytest.mark.asyncio
     async def test_logout_client_error(self) -> None:
         """Test an aiohttp client error on logout is raised as an API error and still resets the client."""
 
         async def scenario(mock_api: aioresponses) -> None:
             client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(username=MOCK_USERNAME, password=MOCK_CREDENTIAL)
 
-            mock_api.post("https://eservice.netzooe.at/service/j_security_check", status=200)
-            mock_api.get(
-                "https://eservice.netzooe.at/service/v1.0/session",
-                headers={"Set-Cookie": "XSRF-TOKEN=mocked-token-value; Path=/; Secure"},
-                status=200,
-            )
-            mock_api.get("https://eservice.netzooe.at/service/logout", exception=ClientError("mocked error"))
+            mock_login(mock_api)
+            mock_api.get(MOCK_LOGOUT_URL, exception=ClientError("mocked error"))
 
             await client.login()
 
@@ -1060,5 +1355,270 @@ class TestUnhappyPathNetzOOEeServiceAPI:
 
             assert str(error.value) == "mocked error"
             assert client.xsrf_token == ""
+
+        assert await count_unclosed_sessions(scenario) == 0
+
+    async def test_relogin_rejected(self) -> None:
+        """Test rejected credentials on the login after a 401 response raise an authentication error."""
+
+        async def scenario(mock_api: aioresponses) -> None:
+            client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
+
+            mock_api.get(MOCK_DASHBOARD_URL, status=401, payload={})
+            mock_api.post(MOCK_LOGIN_URL, status=401)
+
+            with pytest.raises(AuthenticationError):
+                await client.dashboard()
+
+            assert client.xsrf_token == ""
+            assert len(recorded_calls(mock_api, "dashboard")) == 1
+
+        assert await count_unclosed_sessions(scenario) == 0
+
+    async def test_retry_other_error(self) -> None:
+        """Test an error other than 401 on the retry after a new login is raised as that error."""
+        with aioresponses() as mock_api:
+            client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api, repeat=2)
+
+            mock_api.get(MOCK_DASHBOARD_URL, status=401, payload={})
+            mock_api.get(MOCK_DASHBOARD_URL, status=500, body="mocked body")
+
+            with pytest.raises(APIError) as error:
+                await client.dashboard()
+
+            assert type(error.value) is APIError
+            assert error.value.status == HTTPStatus.INTERNAL_SERVER_ERROR
+            assert error.value.detail == "mocked body"
+
+            await client.logout()
+
+    @pytest.mark.parametrize("status", [400, 403, 404, 503])
+    async def test_error_status_not_retried(self, status: int) -> None:
+        """Test an error status other than 401 is raised without a new login or a retry."""
+        with aioresponses() as mock_api:
+            client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
+
+            mock_api.get(MOCK_DASHBOARD_URL, status=status, body="mocked body")
+
+            with pytest.raises(APIError) as error:
+                await client.dashboard()
+
+            assert type(error.value) is APIError
+            assert error.value.status == status
+            assert client.xsrf_token == MOCK_XSRF
+            assert len(recorded_calls(mock_api, "dashboard")) == 1
+            assert len(recorded_calls(mock_api, "j_security_check")) == 1
+
+            await client.logout()
+
+    async def test_post_error(self) -> None:
+        """Test an error response of a POST request is raised as an API error."""
+        with aioresponses() as mock_api:
+            client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
+
+            mock_api.post(MOCK_PROFILE_URL, status=500, body="mocked body")
+
+            with pytest.raises(APIError) as error:
+                await client.consumptions_profile(pods=[])
+
+            assert error.value.status == HTTPStatus.INTERNAL_SERVER_ERROR
+            assert error.value.detail == "mocked body"
+
+            await client.logout()
+
+    @pytest.mark.parametrize(
+        ("status", "exception"),
+        [
+            (401, AuthenticationError),
+            (500, APIError),
+        ],
+    )
+    async def test_login_still_logged_in_failed(self, status: int, exception: type[APIError]) -> None:
+        """Test a failed second login after the logout of a still logged in session raises the matching error."""
+
+        async def scenario(mock_api: aioresponses) -> None:
+            mock_api.post(MOCK_LOGIN_URL, status=404)
+            mock_api.get(MOCK_LOGOUT_URL, status=200)
+            mock_api.post(MOCK_LOGIN_URL, status=status)
+
+            client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(username=MOCK_USERNAME, password=MOCK_CREDENTIAL)
+
+            with pytest.raises(exception) as error:
+                await client.login()
+
+            assert type(error.value) is exception
+            assert error.value.status == status
+            assert client.xsrf_token == ""
+
+        assert await count_unclosed_sessions(scenario) == 0
+
+    async def test_login_still_logged_in_logout_error(self) -> None:
+        """Test a client error on the logout of a still logged in session is raised as an API error."""
+
+        async def scenario(mock_api: aioresponses) -> None:
+            mock_api.post(MOCK_LOGIN_URL, status=404)
+            mock_api.get(MOCK_LOGOUT_URL, exception=ClientError("mocked error"))
+
+            client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(username=MOCK_USERNAME, password=MOCK_CREDENTIAL)
+
+            with pytest.raises(APIError) as error:
+                await client.login()
+
+            assert str(error.value) == "mocked error"
+            assert len(recorded_calls(mock_api, "j_security_check")) == 1
+
+        assert await count_unclosed_sessions(scenario) == 0
+
+    async def test_passed_session_not_closed_on_login_error(self) -> None:
+        """Test a failed login does not close a passed session."""
+        with aioresponses() as mock_api:
+            mock_api.post(MOCK_LOGIN_URL, status=401)
+
+            async with ClientSession() as session:
+                client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(
+                    username=MOCK_USERNAME,
+                    password=MOCK_CREDENTIAL,
+                    session=session,
+                )
+
+                with pytest.raises(AuthenticationError):
+                    await client.login()
+
+                assert not session.closed
+
+    @pytest.mark.parametrize(
+        ("request_method", "message"),
+        [
+            (
+                lambda client: client.consents("ACTIVE"),
+                "Invalid value for status: 'ACTIVE'",
+            ),
+            (
+                lambda client: client.consent_requests(["CONFIRMED"]),
+                "Invalid value for status: 'CONFIRMED'",
+            ),
+            (
+                lambda client: client.dashboard_headers("STROM"),
+                "Invalid value for branch: 'STROM'",
+            ),
+            (
+                lambda client: client.consumptions_profiles([ConsumptionsProfilesBranch.GAS, None]),
+                "Invalid value for branch: None",
+            ),
+            (
+                lambda client: client.dashboard_headers(active_only="true"),
+                "Invalid value for activeOnly: 'true'",
+            ),
+            (
+                lambda client: client.consumptions_profiles(active_only=1),
+                "Invalid value for activeOnly: 1",
+            ),
+            (
+                lambda client: client.consumptions_profile([], dimension="ENERGY"),
+                "Invalid value for dimension: 'ENERGY'",
+            ),
+        ],
+    )
+    async def test_invalid_enum_value(
+        self,
+        request_method: Callable[[NetzOOEeServiceAPI], Awaitable[Any]],
+        message: str,
+    ) -> None:
+        """Test a filter or dimension that is no enum member raises an API error before any request."""
+        with aioresponses() as mock_api:
+            client: NetzOOEeServiceAPI = await create_client(mock_api)
+
+            with pytest.raises(APIError) as error:
+                await request_method(client)
+
+            assert type(error.value) is APIError
+            assert str(error.value) == message
+            assert error.value.status is None
+            assert mock_api.requests == {}
+
+    async def test_contract_account_empty(self) -> None:
+        """Test empty path parameters of the contract account are sent and the 404 of the portal is raised."""
+        with aioresponses() as mock_api:
+            client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
+
+            mock_api.get(f"{MOCK_API_URL}/contract-accounts//", status=404, body="")
+
+            with pytest.raises(APIError) as error:
+                await client.contract_accounts(business_partner_number="", contract_account_number="")
+
+            assert error.value.status == HTTPStatus.NOT_FOUND
+
+            await client.logout()
+
+    @pytest.mark.parametrize("auto_login", [False, True])
+    async def test_logout_during_login(self, *, auto_login: bool) -> None:
+        """Test a logout between the login requests raises an API error instead of a RuntimeError of aiohttp."""
+
+        async def scenario(mock_api: aioresponses) -> None:
+            started: asyncio.Event = asyncio.Event()
+            release: asyncio.Event = asyncio.Event()
+
+            async def security_check(_url: URL, **_kwargs: object) -> CallbackResult:
+                started.set()
+                await release.wait()
+                return CallbackResult(status=200)
+
+            mock_api.post(MOCK_LOGIN_URL, callback=security_check)
+            mock_api.get(MOCK_LOGOUT_URL, status=200)
+
+            client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(username=MOCK_USERNAME, password=MOCK_CREDENTIAL)
+
+            login: asyncio.Task[Any] = asyncio.create_task(client.dashboard() if auto_login else client.login())
+            await started.wait()
+            await client.logout()
+            release.set()
+
+            with pytest.raises(APIError) as error:
+                await login
+
+            assert type(error.value) is APIError
+            assert str(error.value) == "Session is closed"
+            assert client.xsrf_token == ""
+
+            # The next request logs in on a new session.
+            mock_login(mock_api)
+            mock_api.get(MOCK_DASHBOARD_URL, status=200, payload={})
+            mock_api.get(MOCK_LOGOUT_URL, status=200)
+
+            result = await client.dashboard()
+            assert result == {}
+
+            await client.logout()
+
+        assert await count_unclosed_sessions(scenario) == 0
+
+    async def test_logout_after_login_before_request(self) -> None:
+        """Test a logout after the automatic login but before the request raises an API error."""
+
+        async def scenario(mock_api: aioresponses) -> None:
+            started: asyncio.Event = asyncio.Event()
+            release: asyncio.Event = asyncio.Event()
+
+            async def session_request(_url: URL, **_kwargs: object) -> CallbackResult:
+                started.set()
+                await release.wait()
+                return CallbackResult(status=200, headers={"Set-Cookie": f"XSRF-TOKEN={MOCK_XSRF}; Path=/; Secure"})
+
+            mock_api.post(MOCK_LOGIN_URL, status=200)
+            mock_api.get(MOCK_SESSION_URL, callback=session_request)
+            mock_api.get(MOCK_LOGOUT_URL, status=200)
+
+            client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(username=MOCK_USERNAME, password=MOCK_CREDENTIAL)
+
+            request: asyncio.Task[dict[str, Any]] = asyncio.create_task(client.dashboard())
+            await started.wait()
+            await client.logout()
+            release.set()
+
+            with pytest.raises(APIError) as error:
+                await request
+
+            assert str(error.value) == "Session is closed"
+            assert recorded_calls(mock_api, "dashboard") == []
 
         assert await count_unclosed_sessions(scenario) == 0

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- An empty list as `branch` or `status` filter is no filter like `None`, `dashboard_headers([])` and
+  `consumptions_profiles([])` no longer raise an `APIError` with HTTP 404
+- A filter or `dimension` that is no enum member, e.g. a plain string like `"STROM"`, raises an `APIError` before
+  any request instead of an `AttributeError`
+- A `logout()` while a login is still running raises an `APIError` instead of a `RuntimeError` of aiohttp
+
 <!--start-->
 
 ## [1.2.0] - 2026-10-18

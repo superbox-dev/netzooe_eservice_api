@@ -138,9 +138,13 @@ class NetzOOEeServiceAPI:
             "x-xsrf-token": self.xsrf_token,
         }
 
-    @staticmethod
-    def _query(**params: Sequence[Enum] | Enum | bool | None) -> str:
-        """Build a query string like ``?name=A,B&flag=true`` from the parameters that are not `None`, or ``""``."""
+    @classmethod
+    def _query(cls, **params: Sequence[Enum] | Enum | bool | None) -> str:
+        """Build a query string like ``?name=A,B&flag=true`` from the parameters that are not `None`, or ``""``.
+
+        An empty list is no filter, like `None`, the portal answers e.g. ``?branch=`` with 404.
+        Any other value than a member, a list of members or a bool raises an `APIError`.
+        """
         parts: list[str] = []
 
         for name, value in params.items():
@@ -149,9 +153,13 @@ class NetzOOEeServiceAPI:
 
             if isinstance(value, bool):
                 parts.append(f"{name}={str(value).lower()}")
-            else:
-                values: Sequence[Enum] = [value] if isinstance(value, Enum) else value
-                parts.append(f"{name}={','.join(member.value for member in values)}")
+                continue
+
+            # A string is a sequence too, but of characters, not of members.
+            values: Sequence[object] = value if isinstance(value, Sequence) and not isinstance(value, str) else [value]
+
+            if values:
+                parts.append(f"{name}={','.join(cls._member_value(name, member) for member in values)}")
 
         return f"?{'&'.join(parts)}" if parts else ""
 
@@ -161,8 +169,17 @@ class NetzOOEeServiceAPI:
         return value.value if isinstance(value, Enum) else value
 
     @staticmethod
-    def _client_error(error: ClientError | TimeoutError, /) -> APIError:
-        """Map an aiohttp client error or a timeout to an `APIError`."""
+    def _member_value(name: str, value: object, /) -> str:
+        """Return the value of an enum member, or raise an `APIError` for any other value."""
+        if not isinstance(value, Enum):
+            message: str = f"Invalid value for {name}: {value!r}"
+            raise APIError(message)
+
+        return value.value
+
+    @staticmethod
+    def _client_error(error: ClientError | TimeoutError | RuntimeError, /) -> APIError:
+        """Map an aiohttp client error, a timeout or a request on a closed session to an `APIError`."""
         return APIError(str(error) or type(error).__name__)
 
     async def _request[T: _JSONResponse](
@@ -209,8 +226,9 @@ class NetzOOEeServiceAPI:
                 await self.login()
 
             return await self._request(method, url, response_type, json=json, retry=False)
-        except (ClientError, TimeoutError) as error:
+        except (ClientError, TimeoutError, RuntimeError) as error:
             # The session and its login stay valid, closing it would also abort concurrent requests.
+            # aiohttp raises a RuntimeError for a request on a session that `logout()` closed meanwhile.
             raise self._client_error(error) from error
 
     async def _get[T: _JSONResponse](self, url: str, response_type: type[T], /) -> T:
@@ -252,7 +270,8 @@ class NetzOOEeServiceAPI:
 
         try:
             await self._authenticate(session)
-        except (ClientError, TimeoutError) as error:
+        except (ClientError, TimeoutError, RuntimeError) as error:
+            # A RuntimeError if `logout()` closed the session between the login requests.
             await self._close_session()
             raise self._client_error(error) from error
         except APIError:
@@ -356,7 +375,8 @@ class NetzOOEeServiceAPI:
         Parameters
         ----------
         branch
-            Only return contract accounts of this branch or these branches. Returns all contract accounts if `None`.
+            Only return contract accounts of this branch or these branches. Returns all contract accounts if `None`
+            or empty.
         active_only
             Only return active (`True`) contract accounts. Returns all contract accounts if `None`.
 
@@ -372,7 +392,7 @@ class NetzOOEeServiceAPI:
         InvalidJsonError
             The response is not valid JSON, e.g. the maintenance page ("Wartungsseite").
         APIError
-            Any other HTTP or connection error.
+            Any other HTTP or connection error, or a filter value that is no enum member.
 
         Examples
         --------
@@ -391,7 +411,8 @@ class NetzOOEeServiceAPI:
         Parameters
         ----------
         status
-            Only return consents with this status or one of these statuses. Returns all consents if `None`.
+            Only return consents with this status or one of these statuses. Returns all consents if `None` or
+            empty.
 
         Returns
         -------
@@ -405,7 +426,7 @@ class NetzOOEeServiceAPI:
         InvalidJsonError
             The response is not valid JSON, e.g. the maintenance page ("Wartungsseite").
         APIError
-            Any other HTTP or connection error.
+            Any other HTTP or connection error, or a filter value that is no enum member.
 
         Examples
         --------
@@ -425,7 +446,7 @@ class NetzOOEeServiceAPI:
         ----------
         status
             Only return consent requests with this status or one of these statuses. Returns all consent requests
-            if `None`.
+            if `None` or empty.
 
         Returns
         -------
@@ -439,7 +460,7 @@ class NetzOOEeServiceAPI:
         InvalidJsonError
             The response is not valid JSON, e.g. the maintenance page ("Wartungsseite").
         APIError
-            Any other HTTP or connection error.
+            Any other HTTP or connection error, or a filter value that is no enum member.
 
         Examples
         --------
@@ -459,7 +480,7 @@ class NetzOOEeServiceAPI:
         Parameters
         ----------
         branch
-            Only return profiles of this branch or these branches. Returns all profiles if `None`.
+            Only return profiles of this branch or these branches. Returns all profiles if `None` or empty.
         active_only
             Only return profiles of active (`True`) points of delivery. Returns all profiles if `None`.
 
@@ -475,7 +496,7 @@ class NetzOOEeServiceAPI:
         InvalidJsonError
             The response is not valid JSON, e.g. the maintenance page ("Wartungsseite").
         APIError
-            Any other HTTP or connection error.
+            Any other HTTP or connection error, or a filter value that is no enum member.
 
         Examples
         --------
@@ -551,7 +572,7 @@ class NetzOOEeServiceAPI:
         InvalidJsonError
             The response is not valid JSON, e.g. the maintenance page ("Wartungsseite").
         APIError
-            Any other HTTP or connection error.
+            Any other HTTP or connection error, or a dimension that is no enum member.
 
         Examples
         --------
@@ -592,6 +613,6 @@ class NetzOOEeServiceAPI:
                     }
                     for pod in pods
                 ],
-                "dimension": dimension.value,
+                "dimension": self._member_value("dimension", dimension),
             },
         )
