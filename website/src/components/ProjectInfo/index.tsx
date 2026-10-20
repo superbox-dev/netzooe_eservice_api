@@ -1,5 +1,7 @@
 import type {ReactNode} from 'react';
 import Link from '@docusaurus/Link';
+import ThemedImage from '@theme/ThemedImage';
+import useBaseUrl from '@docusaurus/useBaseUrl';
 import {
   mdiBug,
   mdiGithub,
@@ -14,8 +16,6 @@ import styles from './styles.module.css';
 
 const repository = 'https://github.com/superbox-dev/netzooe_eservice_api';
 const maintainer = 'mh-superbox';
-// Brand icon of the Home Assistant integration
-const brand = 'https://raw.githubusercontent.com/superbox-dev/netzooe_eservice/main/custom_components/netzooe_eservice/brand';
 
 function Icon({path}: {path: string}): ReactNode {
   return (
@@ -31,15 +31,13 @@ export default function ProjectInfo(): ReactNode {
     <div className={styles.projectInfo}>
       <section className={styles.module}>
         <div className={styles.logo}>
-          <div className={styles.brand}>
-            <img
-              src={`${brand}/icon.png`}
-              srcSet={`${brand}/icon@2x.png 2x`}
-              alt="Netz OÖ"
-              width={128}
-              height={128}
-            />
-          </div>
+          <ThemedImage
+            className={styles.brand}
+            alt="Netz OÖ"
+            sources={{light: useBaseUrl('/logo.png'), dark: useBaseUrl('/dark_logo.png')}}
+            width={891}
+            height={256}
+          />
           <Link href="https://pypi.org/project/netzooe-eservice-api/">
             <img
               src="https://img.shields.io/pypi/v/netzooe-eservice-api?label=PyPI"

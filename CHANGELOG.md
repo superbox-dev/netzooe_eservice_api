@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   accepted
 - Added a timeout of 30 seconds (`API_DEFAULT_TIMEOUT`) to all requests, also with a passed session. Before, a
   request without an answer of the portal waited up to 5 minutes (the default of `aiohttp`)
+- Showed the documentation in the light mode by default, the brand logo of the integration on the project card,
+  a link to the website of the integration in the menu and a wider right column on smaller screens
 
 ### Fixed
 
