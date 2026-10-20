@@ -9,6 +9,7 @@ from enum import Enum
 from http import HTTPStatus
 from json.decoder import JSONDecodeError
 from typing import Any
+from typing import Final
 from typing import Literal
 from typing import NotRequired
 from typing import TypedDict
@@ -16,8 +17,10 @@ from urllib.parse import quote
 
 from aiohttp import ClientError
 from aiohttp import ClientSession
+from aiohttp import ClientTimeout
 from aiohttp import ContentTypeError
 
+from netzooe_eservice_api.constants import API_DEFAULT_TIMEOUT
 from netzooe_eservice_api.constants import COMMON_HEADERS
 from netzooe_eservice_api.constants import ESERVICE_PORTAL
 from netzooe_eservice_api.constants import ESERVICE_PORTAL_API
@@ -33,6 +36,8 @@ from netzooe_eservice_api.error import InvalidJsonError
 
 # Shapes of the JSON responses, `_request()` checks the response against the expected one.
 type _JSONResponse = dict[str, Any] | list[dict[str, Any]]
+
+_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=API_DEFAULT_TIMEOUT)
 
 
 class Pod(TypedDict):
@@ -179,7 +184,7 @@ class NetzOOEeServiceAPI:
     async def _get_session(self) -> ClientSession:
         if self._session is None or self._session.closed:
             # Also for a passed session that is already closed. The new session is owned by the client.
-            self._session = ClientSession()
+            self._session = ClientSession(timeout=_TIMEOUT)
             self._custom_session = True
             # The new session has none of the login cookies the token belongs to.
             self.xsrf_token = ""
@@ -191,7 +196,7 @@ class NetzOOEeServiceAPI:
 
         # The portal answers 404 if the session is still logged in.
         if status == HTTPStatus.NOT_FOUND:
-            async with session.get(f"{ESERVICE_PORTAL}/service/logout", headers=COMMON_HEADERS):
+            async with session.get(f"{ESERVICE_PORTAL}/service/logout", headers=COMMON_HEADERS, timeout=_TIMEOUT):
                 pass
 
             status = await self._post_credentials(session)
@@ -201,7 +206,7 @@ class NetzOOEeServiceAPI:
         if status != HTTPStatus.OK:
             raise APIError(status=status)
 
-        async with session.get(f"{ESERVICE_PORTAL_API}/session", headers=COMMON_HEADERS) as resp:
+        async with session.get(f"{ESERVICE_PORTAL_API}/session", headers=COMMON_HEADERS, timeout=_TIMEOUT) as resp:
             if resp.status != HTTPStatus.OK:
                 raise APIError(await resp.text(errors="replace"), status=resp.status)
 
@@ -222,6 +227,7 @@ class NetzOOEeServiceAPI:
                 **COMMON_HEADERS,
                 "Content-Type": "application/json",
             },
+            timeout=_TIMEOUT,
         ) as resp:
             return resp.status
 
@@ -259,7 +265,9 @@ class NetzOOEeServiceAPI:
                 await asyncio.wait([login_task])
 
             if self._session is not None and not self._session.closed:
-                async with self._session.get(f"{ESERVICE_PORTAL}/service/logout", headers=COMMON_HEADERS) as resp:
+                async with self._session.get(
+                    f"{ESERVICE_PORTAL}/service/logout", headers=COMMON_HEADERS, timeout=_TIMEOUT
+                ) as resp:
                     if not resp.ok:
                         raise APIError(await resp.text(errors="replace"), status=resp.status)
         except (ClientError, TimeoutError) as error:
@@ -315,7 +323,7 @@ class NetzOOEeServiceAPI:
         used_token: str = self.xsrf_token
 
         try:
-            async with session.request(method, url, headers=self.headers, json=json) as resp:
+            async with session.request(method, url, headers=self.headers, json=json, timeout=_TIMEOUT) as resp:
                 if resp.status == HTTPStatus.OK:
                     data: Any = None
 

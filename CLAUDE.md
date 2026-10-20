@@ -44,6 +44,10 @@ Before finishing a change, run `ruff format`, `lint.sh` and `pytest`, in this or
 - `Enum` for a fixed set of values (modes, states, types, values of the portal), never loose strings or ints
   for them
   - not for open values (names, IDs, numbers) or a one-off choice in a signature (`Literal`)
+- Parameters: options keyword-only (after `*`), `/` only for `_`-prefixed helpers, never in public methods
+  - new code only, adding `*` or `/` to an existing public method is a breaking change
+- Credentials, tokens and serial numbers never in log or exception messages
+- Every request has a timeout (`API_DEFAULT_TIMEOUT`), also with a passed session
 - Log messages start with a capital letter, no trailing period, values as `%s` arguments
 - Style rules apply to new and changed code, existing code only adapted when asked
 - Every `.py` file starts with (after the shebang of an executable script, update the end year when editing a
@@ -81,7 +85,7 @@ Before finishing a change, run `ruff format`, `lint.sh` and `pytest`, in this or
   - applies to new methods, existing ones only moved when asked
 - Public methods:
   - `snake_case` parameters, mapped to the portal's `camelCase` inside the method
-  - main parameters positional-or-keyword, further options keyword-only (after `*`), no `/` in new methods
+  - main parameters positional-or-keyword, further options keyword-only (after `*`)
   - optional fields only sent when set
   - enum parameters accept a member, a list of members or `None`
   - return the raw JSON, pass the expected JSON type (`dict` or `list`) to the request helpers, which check it
