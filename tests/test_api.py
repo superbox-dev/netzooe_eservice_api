@@ -9,7 +9,6 @@ from collections.abc import Awaitable
 from collections.abc import Callable
 from http import HTTPStatus
 from typing import Any
-from typing import Final
 
 import pytest
 from aiohttp import ClientError
@@ -32,29 +31,19 @@ from netzooe_eservice_api.constants import ProfileType
 from netzooe_eservice_api.error import APIError
 from netzooe_eservice_api.error import AuthenticationError
 from netzooe_eservice_api.error import InvalidJsonError
-
-MOCK_USERNAME: Final[str] = "test"
-MOCK_CREDENTIAL: Final[str] = "test"
-MOCK_XSRF: Final[str] = "mocked-token-value"
-MOCK_NEW_XSRF: Final[str] = "mocked-new-token-value"
-MOCK_OUTSIDE_XSRF: Final[str] = "mocked-outside-token-value"
-MOCK_UNKNOWN_STATUS: Final[int] = 520
-
-MOCK_LOGIN_URL: Final[str] = "https://eservice.netzooe.at/service/j_security_check"
-MOCK_SESSION_URL: Final[str] = "https://eservice.netzooe.at/service/v1.0/session"
-MOCK_LOGOUT_URL: Final[str] = "https://eservice.netzooe.at/service/logout"
-MOCK_DASHBOARD_URL: Final[str] = "https://eservice.netzooe.at/service/v1.0/dashboard"
-MOCK_PROFILE_URL: Final[str] = "https://eservice.netzooe.at/service/v1.0/consumptions/profile/active"
-MOCK_API_URL: Final[str] = "https://eservice.netzooe.at/service/v1.0"
-
-MOCK_POD: Final[Pod] = Pod(
-    contract_account_number="123",
-    profile_type=ProfileType.ACTIVE_CURRENT,
-    best_available_granularity=Granularity.QUARTER_OF_AN_HOUR,
-    meter_point_administration_number="AT123",
-    date_from="2026-01-01",
-    date_to="2026-01-30",
-)
+from tests.test_api_data import MOCK_API_URL
+from tests.test_api_data import MOCK_CREDENTIAL
+from tests.test_api_data import MOCK_DASHBOARD_URL
+from tests.test_api_data import MOCK_LOGIN_URL
+from tests.test_api_data import MOCK_LOGOUT_URL
+from tests.test_api_data import MOCK_NEW_XSRF
+from tests.test_api_data import MOCK_OUTSIDE_XSRF
+from tests.test_api_data import MOCK_POD
+from tests.test_api_data import MOCK_PROFILE_URL
+from tests.test_api_data import MOCK_SESSION_URL
+from tests.test_api_data import MOCK_UNKNOWN_STATUS
+from tests.test_api_data import MOCK_USERNAME
+from tests.test_api_data import MOCK_XSRF
 
 
 def recorded_calls(mock_api: aioresponses, url_part: str, /) -> list[RequestCall]:
