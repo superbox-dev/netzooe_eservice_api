@@ -491,7 +491,9 @@ class TestHappyPathNetzOOEeServiceAPI:
 
             mock_api.get(MOCK_DASHBOARD_URL, status=200, payload={}, repeat=2)
 
-            results = await asyncio.gather(client.dashboard(), client.dashboard())
+            results: tuple[dict[str, Any], dict[str, Any]] = await asyncio.gather(
+                client.dashboard(), client.dashboard()
+            )
             assert results == [{}, {}]
 
             assert len(recorded_calls(mock_api, "j_security_check")) == 1
@@ -522,7 +524,9 @@ class TestHappyPathNetzOOEeServiceAPI:
 
             logins: int = len(recorded_calls(mock_api, "j_security_check"))
 
-            results = await asyncio.gather(client.dashboard(), client.dashboard())
+            results: tuple[dict[str, Any], dict[str, Any]] = await asyncio.gather(
+                client.dashboard(), client.dashboard()
+            )
             assert results == [{}, {}]
 
             assert len(recorded_calls(mock_api, "j_security_check")) == logins + 1
@@ -560,7 +564,9 @@ class TestHappyPathNetzOOEeServiceAPI:
 
             logins: int = len(recorded_calls(mock_api, "j_security_check"))
 
-            results = await asyncio.gather(client.dashboard(), client.dashboard())
+            results: tuple[dict[str, Any], dict[str, Any]] = await asyncio.gather(
+                client.dashboard(), client.dashboard()
+            )
             assert results == [{}, {}]
 
             assert len(recorded_calls(mock_api, "j_security_check")) == logins + 1
@@ -1161,7 +1167,11 @@ class TestUnhappyPathNetzOOEeServiceAPI:
 
             client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(username=MOCK_USERNAME, password=MOCK_CREDENTIAL)
 
-            results = await asyncio.gather(
+            results: tuple[
+                dict[str, Any] | BaseException,
+                list[dict[str, Any]] | BaseException,
+                list[dict[str, Any]] | BaseException,
+            ] = await asyncio.gather(
                 client.dashboard(),
                 client.consents(),
                 client.consumptions_profiles(),
