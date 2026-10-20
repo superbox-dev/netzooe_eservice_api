@@ -190,22 +190,18 @@ async def test_login_failed(
 
 
 @pytest.mark.parametrize(
-    ("url", "exception", "message"),
+    ("exception", "message"),
     [
-        (MOCK_LOGIN_URL, ClientError("mocked error"), "mocked error"),
-        (MOCK_LOGIN_URL, TimeoutError(), "TimeoutError"),
-        (MOCK_SESSION_URL, ClientError("mocked error"), "mocked error"),
+        (ClientError("mocked error"), "mocked error"),
+        (TimeoutError(), "TimeoutError"),
     ],
-    ids=["login_client_error", "login_timeout", "session_client_error"],
+    ids=["client_error", "timeout"],
 )
-async def test_login_client_error(url: str, exception: Exception, message: str) -> None:
+async def test_login_client_error(exception: Exception, message: str) -> None:
     """Test an aiohttp client error or a timeout on login is raised as an API error and closes the own session."""
 
     async def scenario(mock_api: aioresponses) -> None:
-        if url == MOCK_SESSION_URL:
-            mock_api.post(MOCK_LOGIN_URL, status=200)
-
-        mock_api.add(url, "POST" if url == MOCK_LOGIN_URL else "GET", exception=exception)
+        mock_api.post(MOCK_LOGIN_URL, exception=exception)
 
         client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(username=MOCK_USERNAME, password=MOCK_CREDENTIAL)
 
@@ -214,6 +210,25 @@ async def test_login_client_error(url: str, exception: Exception, message: str) 
 
         assert type(error.value) is APIError
         assert str(error.value) == message
+        assert client.xsrf_token == ""
+
+    assert await count_unclosed_sessions(scenario) == 0
+
+
+async def test_login_session_request_client_error() -> None:
+    """Test an aiohttp client error on the session request of the login is raised as an API error."""
+
+    async def scenario(mock_api: aioresponses) -> None:
+        mock_api.post(MOCK_LOGIN_URL, status=200)
+        mock_api.get(MOCK_SESSION_URL, exception=ClientError("mocked error"))
+
+        client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(username=MOCK_USERNAME, password=MOCK_CREDENTIAL)
+
+        with pytest.raises(APIError) as error:
+            await client.login()
+
+        assert type(error.value) is APIError
+        assert str(error.value) == "mocked error"
         assert client.xsrf_token == ""
 
     assert await count_unclosed_sessions(scenario) == 0
@@ -286,7 +301,7 @@ async def test_login_after_failed_login() -> None:
 
         client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(username=MOCK_USERNAME, password=MOCK_CREDENTIAL)
 
-        with pytest.raises(AuthenticationError):
+        with pytest.raises(AuthenticationError, match="401 Unauthorized"):
             await client.login()
 
         await client.login()
@@ -514,14 +529,18 @@ async def test_login_failed_keeps_passed_session() -> None:
                 session=session,
             )
 
-            with pytest.raises(AuthenticationError):
+            with pytest.raises(AuthenticationError, match="401 Unauthorized"):
                 await client.login()
 
             assert not session.closed
 
 
-@pytest.mark.parametrize("url", [MOCK_LOGIN_URL, MOCK_SESSION_URL], ids=["login", "session"])
-async def test_login_passed_session_closed(url: str) -> None:
+@pytest.mark.parametrize(
+    ("method", "url"),
+    [("POST", MOCK_LOGIN_URL), ("GET", MOCK_SESSION_URL)],
+    ids=["login", "session"],
+)
+async def test_login_passed_session_closed(method: str, url: str) -> None:
     """Test a passed session that is closed during the login raises an API error instead of a RuntimeError."""
     with aioresponses() as mock_api:
         session: ClientSession = ClientSession()
@@ -530,8 +549,10 @@ async def test_login_passed_session_closed(url: str) -> None:
             await session.close()
             return CallbackResult(status=200, headers={"Set-Cookie": f"XSRF-TOKEN={MOCK_XSRF}; Path=/; Secure"})
 
-        mock_api.post(MOCK_LOGIN_URL, callback=close_session if url == MOCK_LOGIN_URL else None, status=200)
-        mock_api.get(MOCK_SESSION_URL, callback=close_session if url == MOCK_SESSION_URL else None, status=200)
+        # The request of the parameters closes the session, it matches before the request of the same URL below.
+        mock_api.add(url, method, callback=close_session, status=200)
+        mock_api.post(MOCK_LOGIN_URL, status=200)
+        mock_api.get(MOCK_SESSION_URL, status=200)
 
         client: NetzOOEeServiceAPI = await create_client(mock_api, mocks=False, session=session)
 
@@ -811,7 +832,7 @@ async def test_request_relogin_rejected() -> None:
         mock_api.get(MOCK_DASHBOARD_URL, status=401, payload={})
         mock_api.post(MOCK_LOGIN_URL, status=401)
 
-        with pytest.raises(AuthenticationError):
+        with pytest.raises(AuthenticationError, match="401 Unauthorized"):
             await client.dashboard()
 
         assert client.xsrf_token == ""
@@ -987,7 +1008,7 @@ async def test_request_client_error_keeps_login() -> None:
         )
         mock_api.get(MOCK_DASHBOARD_URL, status=200, payload={})
 
-        with pytest.raises(APIError):
+        with pytest.raises(APIError, match="mocked error"):
             await client.dashboard()
 
         assert client.xsrf_token == MOCK_XSRF
@@ -1014,14 +1035,18 @@ async def test_request_timeout() -> None:
         await client.logout()
 
 
-@pytest.mark.parametrize("url", [MOCK_LOGIN_URL, MOCK_DASHBOARD_URL], ids=["login", "dashboard"])
-async def test_request_other_runtime_error(url: str) -> None:
+@pytest.mark.parametrize(
+    ("method", "url", "login_mocks"),
+    [("POST", MOCK_LOGIN_URL, False), ("GET", MOCK_DASHBOARD_URL, True)],
+    ids=["login", "dashboard"],
+)
+async def test_request_other_runtime_error(method: str, url: str, *, login_mocks: bool) -> None:
     """Test a RuntimeError that is not caused by a closed session is not hidden as an API error."""
 
     async def scenario(mock_api: aioresponses) -> None:
-        client: NetzOOEeServiceAPI = await create_client(mock_api, mocks=url != MOCK_LOGIN_URL)
+        client: NetzOOEeServiceAPI = await create_client(mock_api, mocks=login_mocks)
 
-        mock_api.add(url, "POST" if url == MOCK_LOGIN_URL else "GET", exception=RuntimeError("mocked error"))
+        mock_api.add(url, method, exception=RuntimeError("mocked error"))
 
         with pytest.raises(RuntimeError, match="mocked error"):
             await client.dashboard()
