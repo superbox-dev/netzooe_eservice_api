@@ -14,15 +14,16 @@ import re
 import shutil
 from pathlib import Path
 from typing import ClassVar
+from typing import Final
 
 import griffe
 
-ROOT: Path = Path(__file__).resolve().parent.parent
-OUTPUT: Path = ROOT / "website" / "docs"
-CONTENT: Path = ROOT / "website" / "content"
-PACKAGE: str = "netzooe_eservice_api"
-CLIENT: str = "client"
-SIGNATURE_WIDTH: int = 100
+ROOT: Final[Path] = Path(__file__).resolve().parent.parent
+OUTPUT: Final[Path] = ROOT / "website" / "docs"
+CONTENT: Final[Path] = ROOT / "website" / "content"
+PACKAGE: Final[str] = "netzooe_eservice_api"
+CLIENT: Final[str] = "client"
+SIGNATURE_WIDTH: Final[int] = 100
 
 
 class DocsGenerator:
@@ -31,7 +32,7 @@ class DocsGenerator:
     _ROLE_PATTERN: re.Pattern[str] = re.compile(r":[a-z]+:`~?([^`]+)`")
     _LITERAL_PATTERN: re.Pattern[str] = re.compile(r"``([^`]+)``")
 
-    # Links in the copied Markdown files, mapped to the generated pages, so Docusaurus checks them
+    # Links in the copied Markdown files, mapped to the generated pages, so Docusaurus checks them.
     _LINKS: ClassVar[dict[str, str]] = {
         "(CHANGELOG.md)": "(changelog.md)",
         "(CONTRIBUTING.md)": "(contributing.md)",
@@ -197,7 +198,7 @@ class DocsGenerator:
                     (item.name, self._convert(item.description).replace("\n", " ")) for item in section.value
                 )
 
-        # A pipe in a type like `str | None` would end the table cell
+        # A pipe in a type like `str | None` would end the table cell.
         lines: list[str] = ["| Key | Type | Description |", "|---|---|---|"]
         lines.extend(
             f"| `{name}` | `{str(attribute.annotation).replace('|', r'\|')}` | {descriptions.get(name, '')} |"
@@ -322,7 +323,7 @@ class DocsGenerator:
         if positional_only:
             parameters.append("/")
 
-        # A class signature is rendered from its __init__ without the return annotation
+        # A class signature is rendered from its __init__ without the return annotation.
         returns: str = "" if prefix in {"class ", ""} else f" -> {function.returns}"
         line: str = f"{prefix}{name}({', '.join(parameters)}){returns}"
 
@@ -368,7 +369,7 @@ class DocsGenerator:
             if isinstance(section, griffe.DocstringSectionText):
                 text: str = section.value
 
-                # The summary of __init__ ("Initialize the ...") repeats the class docstring
+                # The summary of __init__ ("Initialize the ...") repeats the class docstring.
                 if skip_summary:
                     text = text.split("\n\n", maxsplit=1)[1] if "\n\n" in text else ""
                     skip_summary = False

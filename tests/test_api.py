@@ -9,6 +9,7 @@ from collections.abc import Awaitable
 from collections.abc import Callable
 from http import HTTPStatus
 from typing import Any
+from typing import Final
 
 import pytest
 from aiohttp import ClientError
@@ -32,21 +33,21 @@ from netzooe_eservice_api.error import APIError
 from netzooe_eservice_api.error import AuthenticationError
 from netzooe_eservice_api.error import InvalidJsonError
 
-MOCK_USERNAME: str = "test"
-MOCK_CREDENTIAL: str = "test"
-MOCK_XSRF: str = "mocked-token-value"
-MOCK_NEW_XSRF: str = "mocked-new-token-value"
-MOCK_OUTSIDE_XSRF: str = "mocked-outside-token-value"
-MOCK_UNKNOWN_STATUS: int = 520
+MOCK_USERNAME: Final[str] = "test"
+MOCK_CREDENTIAL: Final[str] = "test"
+MOCK_XSRF: Final[str] = "mocked-token-value"
+MOCK_NEW_XSRF: Final[str] = "mocked-new-token-value"
+MOCK_OUTSIDE_XSRF: Final[str] = "mocked-outside-token-value"
+MOCK_UNKNOWN_STATUS: Final[int] = 520
 
-MOCK_LOGIN_URL: str = "https://eservice.netzooe.at/service/j_security_check"
-MOCK_SESSION_URL: str = "https://eservice.netzooe.at/service/v1.0/session"
-MOCK_LOGOUT_URL: str = "https://eservice.netzooe.at/service/logout"
-MOCK_DASHBOARD_URL: str = "https://eservice.netzooe.at/service/v1.0/dashboard"
-MOCK_PROFILE_URL: str = "https://eservice.netzooe.at/service/v1.0/consumptions/profile/active"
-MOCK_API_URL: str = "https://eservice.netzooe.at/service/v1.0"
+MOCK_LOGIN_URL: Final[str] = "https://eservice.netzooe.at/service/j_security_check"
+MOCK_SESSION_URL: Final[str] = "https://eservice.netzooe.at/service/v1.0/session"
+MOCK_LOGOUT_URL: Final[str] = "https://eservice.netzooe.at/service/logout"
+MOCK_DASHBOARD_URL: Final[str] = "https://eservice.netzooe.at/service/v1.0/dashboard"
+MOCK_PROFILE_URL: Final[str] = "https://eservice.netzooe.at/service/v1.0/consumptions/profile/active"
+MOCK_API_URL: Final[str] = "https://eservice.netzooe.at/service/v1.0"
 
-MOCK_POD: Pod = Pod(
+MOCK_POD: Final[Pod] = Pod(
     contract_account_number="123",
     profile_type=ProfileType.ACTIVE_CURRENT,
     best_available_granularity=Granularity.QUARTER_OF_AN_HOUR,
@@ -206,6 +207,7 @@ class TestHappyPathNetzOOEeServiceAPI:
                 "https://eservice.netzooe.at/service/v1.0/dashboard/headers?activeOnly=false",
             ),
         ],
+        ids=["no_filter", "single_branch_active_only", "multiple_branches_not_active_only"],
     )
     async def test_dashboard_headers(
         self,
@@ -246,6 +248,7 @@ class TestHappyPathNetzOOEeServiceAPI:
                 "https://eservice.netzooe.at/service/v1.0/consents",
             ),
         ],
+        ids=["multiple_statuses", "single_status", "no_status"],
     )
     async def test_consents(
         self,
@@ -284,6 +287,7 @@ class TestHappyPathNetzOOEeServiceAPI:
                 "https://eservice.netzooe.at/service/v1.0/consent-requests?status=INITIAL,SENT",
             ),
         ],
+        ids=["no_status", "single_status", "multiple_statuses"],
     )
     async def test_consent_requests(
         self,
@@ -315,6 +319,7 @@ class TestHappyPathNetzOOEeServiceAPI:
                 "https://eservice.netzooe.at/service/v1.0/consumptions/profiles?branch=STROM",
             ),
         ],
+        ids=["no_branch", "single_branch"],
     )
     async def test_consumptions_profiles(
         self,
@@ -436,6 +441,7 @@ class TestHappyPathNetzOOEeServiceAPI:
                 ConsumptionsDimension.ENERGY,
             ),
         ],
+        ids=["energy_community_energy", "no_energy_community_energy", "enums_power", "multiple_pods_energy"],
     )
     async def test_consumptions_profile(
         self,
@@ -813,6 +819,18 @@ class TestHappyPathNetzOOEeServiceAPI:
                 f"{MOCK_API_URL}/consent-requests",
             ),
         ],
+        ids=[
+            "dashboard_headers_empty_list",
+            "consents_empty_list",
+            "consent_requests_empty_list",
+            "consumptions_profiles_empty_list_active_only",
+            "consumptions_profiles_tuple",
+            "dashboard_headers_set",
+            "consumptions_profiles_duplicate_branch",
+            "consumptions_profiles_multiple_branches_active_only",
+            "consents_generator",
+            "consent_requests_empty_set",
+        ],
     )
     async def test_empty_filter(
         self,
@@ -867,6 +885,7 @@ class TestHappyPathNetzOOEeServiceAPI:
             ([200], [MOCK_OUTSIDE_XSRF]),
             ([401, 200], [MOCK_OUTSIDE_XSRF, MOCK_XSRF]),
         ],
+        ids=["token_accepted", "token_replaced_after_401"],
     )
     async def test_xsrf_token_set_from_outside_passed_session(self, statuses: list[int], tokens: list[str]) -> None:
         """Test an XSRF token set from outside on a passed session is sent, and replaced by a login after a 401."""
@@ -993,6 +1012,7 @@ class TestUnhappyPathNetzOOEeServiceAPI:
                 "400 Bad Request: Bad request syntax or unsupported method",
             ),
         ],
+        ids=["unauthorized", "bad_request"],
     )
     async def test_login_failed(
         self,
@@ -1056,6 +1076,7 @@ class TestUnhappyPathNetzOOEeServiceAPI:
             {"Set-Cookie": "XSRF-TOKEN=; Path=/; Secure"},
             {"Set-Cookie": "OTHER=mocked-value; Path=/; Secure"},
         ],
+        ids=["no_cookie", "empty_xsrf_cookie", "other_cookie"],
     )
     async def test_session_without_xsrf_cookie(self, headers: dict[str, str]) -> None:
         """Test a session response without a non-empty XSRF cookie raises an API error and closes the own session."""
@@ -1208,6 +1229,7 @@ class TestUnhappyPathNetzOOEeServiceAPI:
                 "application/json",
             ),
         ],
+        ids=["html_content_type", "json_content_type"],
     )
     async def test_maintenance_page(self, body: str, content_type: str) -> None:
         """Test a maintenance page response raises an invalid JSON error."""
@@ -1235,6 +1257,7 @@ class TestUnhappyPathNetzOOEeServiceAPI:
             (200, InvalidJsonError),
             (500, APIError),
         ],
+        ids=["ok", "server_error"],
     )
     async def test_undecodable_body(self, status: int, exception: type[APIError]) -> None:
         """Test a body that is not valid in its charset is raised as an API error with the decodable part."""
@@ -1265,6 +1288,14 @@ class TestUnhappyPathNetzOOEeServiceAPI:
             (NetzOOEeServiceAPI.dashboard, MOCK_DASHBOARD_URL, '"mocked"'),
             (NetzOOEeServiceAPI.consents, "https://eservice.netzooe.at/service/v1.0/consents", "{}"),
             (NetzOOEeServiceAPI.consents, "https://eservice.netzooe.at/service/v1.0/consents", "true"),
+        ],
+        ids=[
+            "dashboard_list",
+            "dashboard_null",
+            "dashboard_number",
+            "dashboard_string",
+            "consents_dict",
+            "consents_bool",
         ],
     )
     async def test_unexpected_json_shape(
@@ -1346,6 +1377,7 @@ class TestUnhappyPathNetzOOEeServiceAPI:
             (MOCK_LOGIN_URL, TimeoutError(), "TimeoutError"),
             (MOCK_SESSION_URL, ClientError("mocked error"), "mocked error"),
         ],
+        ids=["login_client_error", "login_timeout", "session_client_error"],
     )
     async def test_login_client_error(self, url: str, exception: Exception, message: str) -> None:
         """Test an aiohttp client error or a timeout on login is raised as an API error and closes the own session."""
@@ -1439,7 +1471,9 @@ class TestUnhappyPathNetzOOEeServiceAPI:
 
             await client.logout()
 
-    @pytest.mark.parametrize("status", [400, 403, 404, 503])
+    @pytest.mark.parametrize(
+        "status", [400, 403, 404, 503], ids=["bad_request", "forbidden", "not_found", "service_unavailable"]
+    )
     async def test_error_status_not_retried(self, status: int) -> None:
         """Test an error status other than 401 is raised without a new login or a retry."""
         with aioresponses() as mock_api:
@@ -1479,6 +1513,7 @@ class TestUnhappyPathNetzOOEeServiceAPI:
             (401, AuthenticationError),
             (500, APIError),
         ],
+        ids=["unauthorized", "server_error"],
     )
     async def test_login_still_logged_in_failed(self, status: int, exception: type[APIError]) -> None:
         """Test a failed second login after the logout of a still logged in session raises the matching error."""
@@ -1587,6 +1622,20 @@ class TestUnhappyPathNetzOOEeServiceAPI:
                 "Invalid value for best_available_granularity: <ProfileType.ACTIVE_CURRENT: 'ACTIVE_CURRENT'>",
             ),
         ],
+        ids=[
+            "consents_string_status",
+            "consent_requests_string_status",
+            "dashboard_headers_string_branch",
+            "consumptions_profiles_none_branch",
+            "dashboard_headers_string_active_only",
+            "consumptions_profiles_int_active_only",
+            "consumptions_profile_string_dimension",
+            "consents_other_enum_status",
+            "dashboard_headers_int_branch",
+            "consumptions_profile_other_enum_dimension",
+            "consumptions_profile_none_profile_type",
+            "consumptions_profile_other_enum_granularity",
+        ],
     )
     async def test_invalid_enum_value(
         self,
@@ -1619,8 +1668,8 @@ class TestUnhappyPathNetzOOEeServiceAPI:
 
             await client.logout()
 
-    @pytest.mark.parametrize("auto_login", [False, True])
-    @pytest.mark.parametrize("passed_session", [False, True])
+    @pytest.mark.parametrize("auto_login", [False, True], ids=["manual_login", "auto_login"])
+    @pytest.mark.parametrize("passed_session", [False, True], ids=["own_session", "passed_session"])
     async def test_logout_during_login(self, *, auto_login: bool, passed_session: bool) -> None:
         """Test a logout during the login cancels it, so it raises an API error and sets no token afterwards."""
 
@@ -1670,7 +1719,7 @@ class TestUnhappyPathNetzOOEeServiceAPI:
 
         assert await count_unclosed_sessions(scenario) == 0
 
-    @pytest.mark.parametrize("url", [MOCK_LOGIN_URL, MOCK_SESSION_URL])
+    @pytest.mark.parametrize("url", [MOCK_LOGIN_URL, MOCK_SESSION_URL], ids=["login", "session"])
     async def test_passed_session_closed_during_login(self, url: str) -> None:
         """Test a passed session that is closed during the login raises an API error instead of a RuntimeError."""
         with aioresponses() as mock_api:
@@ -1692,7 +1741,7 @@ class TestUnhappyPathNetzOOEeServiceAPI:
             assert str(error.value) == "Session is closed"
             assert recorded_calls(mock_api, "dashboard") == []
 
-    @pytest.mark.parametrize("url", [MOCK_LOGIN_URL, MOCK_DASHBOARD_URL])
+    @pytest.mark.parametrize("url", [MOCK_LOGIN_URL, MOCK_DASHBOARD_URL], ids=["login", "dashboard"])
     async def test_other_runtime_error(self, url: str) -> None:
         """Test a RuntimeError that is not caused by a closed session is not hidden as an API error."""
 
