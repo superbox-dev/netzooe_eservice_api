@@ -50,7 +50,8 @@ All methods of `NetzOOEeServiceAPI` are asynchronous. The client logs in automat
 logs in again once if the session has expired. The data methods return the raw JSON response of the portal.
 
 A passed `aiohttp` `ClientSession` is never closed by the client. Without a passed session, the client creates its
-own and closes it on `logout()` and if a login fails.
+own and closes it on `logout()` and if a login fails. Every request times out after 30 seconds (`API_DEFAULT_TIMEOUT`),
+also with a passed session.
 
 | Method     | Portal endpoint                                                    | Description                                                                                                                                                             |
 |------------|--------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
