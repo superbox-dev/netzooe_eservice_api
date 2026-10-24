@@ -57,6 +57,13 @@ for type checking. Run all linters at once with:
 ./scripts/lint.sh
 ```
 
+See [CLAUDE.md](CLAUDE.md) for the project rules.
+
+## AI assistant
+
+The project only uses [Claude Code](https://claude.com/claude-code) as AI assistant. Its rules are in
+[CLAUDE.md](CLAUDE.md), `tests/CLAUDE.md`, `website/CLAUDE.md` and the skills in `.claude/skills/`.
+
 ## Build the documentation
 
 The documentation is a [Docusaurus](https://docusaurus.io) website in `website/` and needs Node.js.

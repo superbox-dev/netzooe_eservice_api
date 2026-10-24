@@ -21,20 +21,10 @@
   margin: 1rem 0;
 }
 
+/* Brand logo of the integration, with a light and a dark variant */
 .brand {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  width: 128px;
-  aspect-ratio: 1;
-  padding: 16px;
-  border-radius: 22%;
-  background: #fff;
-}
-
-.brand img {
   width: 100%;
+  max-width: 220px;
   height: auto;
 }
 
@@ -49,7 +39,7 @@
   height: 1.1em;
   margin-right: 0.15em;
   vertical-align: -0.2em;
-  fill: currentColor;
+  fill: none;
 }
 
 .title {

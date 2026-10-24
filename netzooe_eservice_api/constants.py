@@ -3,11 +3,15 @@
 """Constants used by the Netz OÖ eService API."""
 
 from enum import Enum
+from typing import Final
 
-ESERVICE_PORTAL: str = "https://eservice.netzooe.at"
-ESERVICE_PORTAL_API: str = f"{ESERVICE_PORTAL}/service/v1.0"
+ESERVICE_PORTAL: Final[str] = "https://eservice.netzooe.at"
+ESERVICE_PORTAL_API: Final[str] = f"{ESERVICE_PORTAL}/service/v1.0"
 
-COMMON_HEADERS: dict[str, str] = {
+# Seconds until a request to the portal times out.
+API_DEFAULT_TIMEOUT: Final[int] = 30
+
+COMMON_HEADERS: Final[dict[str, str]] = {
     "User-Agent": "Mozilla/5.0",
     "Accept": "application/json, text/plain, */*",
     "client-id": "netzonline",
