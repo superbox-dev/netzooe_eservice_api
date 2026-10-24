@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!--start-->
 
-## [1.3.0] - 2026-10-24
+## [1.2.1] - 2026-10-24
 
 ### Changed
 
@@ -170,8 +170,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added the exceptions `APIError` (with the HTTP `status`), `AuthenticationError` and `InvalidJsonError`
 - Supported Python 3.13 and 3.14
 
-[Unreleased]: https://github.com/superbox-dev/netzooe_eservice_api/compare/v1.3.0...HEAD
-[1.3.0]: https://github.com/superbox-dev/netzooe_eservice_api/compare/v1.2.0...v1.3.0
+[Unreleased]: https://github.com/superbox-dev/netzooe_eservice_api/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/superbox-dev/netzooe_eservice_api/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/superbox-dev/netzooe_eservice_api/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/superbox-dev/netzooe_eservice_api/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/superbox-dev/netzooe_eservice_api/compare/v1.0.2...v1.1.0
