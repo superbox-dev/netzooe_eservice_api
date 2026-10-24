@@ -1,5 +1,5 @@
 # serializer version: 1
-# name: TestHappyPathNetzOOEeServiceAPI.test_consent_requests[ConsentRequestsStatus.CONFIRMED-https://eservice.netzooe.at/service/v1.0/consent-requests?status=CONFIRMED]
+# name: test_consent_requests[multiple_statuses]
   dict({
     tuple(
       'GET',
@@ -15,168 +15,7 @@
             'User-Agent': 'Mozilla/5.0',
             'client-id': 'netzonline',
           }),
-        }),
-      ),
-    ]),
-    tuple(
-      'GET',
-      URL('https://eservice.netzooe.at/service/v1.0/consent-requests?status=CONFIRMED'),
-    ): list([
-      RequestCall(
-        args=tuple(
-        ),
-        kwargs=dict({
-          'allow_redirects': True,
-          'headers': dict({
-            'Accept': 'application/json, text/plain, */*',
-            'Content-Type': 'application/json',
-            'User-Agent': 'Mozilla/5.0',
-            'client-id': 'netzonline',
-            'x-xsrf-token': 'mocked-token-value',
-          }),
-          'json': None,
-        }),
-      ),
-    ]),
-    tuple(
-      'GET',
-      URL('https://eservice.netzooe.at/service/v1.0/session'),
-    ): list([
-      RequestCall(
-        args=tuple(
-        ),
-        kwargs=dict({
-          'allow_redirects': True,
-          'headers': dict({
-            'Accept': 'application/json, text/plain, */*',
-            'User-Agent': 'Mozilla/5.0',
-            'client-id': 'netzonline',
-          }),
-        }),
-      ),
-    ]),
-    tuple(
-      'POST',
-      URL('https://eservice.netzooe.at/service/j_security_check'),
-    ): list([
-      RequestCall(
-        args=tuple(
-        ),
-        kwargs=dict({
-          'allow_redirects': True,
-          'data': None,
-          'headers': dict({
-            'Accept': 'application/json, text/plain, */*',
-            'Content-Type': 'application/json',
-            'User-Agent': 'Mozilla/5.0',
-            'client-id': 'netzonline',
-          }),
-          'json': dict({
-            'j_password': 'test',
-            'j_username': 'test',
-          }),
-        }),
-      ),
-    ]),
-  })
-# ---
-# name: TestHappyPathNetzOOEeServiceAPI.test_consent_requests[None-https://eservice.netzooe.at/service/v1.0/consent-requests]
-  dict({
-    tuple(
-      'GET',
-      URL('https://eservice.netzooe.at/service/logout'),
-    ): list([
-      RequestCall(
-        args=tuple(
-        ),
-        kwargs=dict({
-          'allow_redirects': True,
-          'headers': dict({
-            'Accept': 'application/json, text/plain, */*',
-            'User-Agent': 'Mozilla/5.0',
-            'client-id': 'netzonline',
-          }),
-        }),
-      ),
-    ]),
-    tuple(
-      'GET',
-      URL('https://eservice.netzooe.at/service/v1.0/consent-requests'),
-    ): list([
-      RequestCall(
-        args=tuple(
-        ),
-        kwargs=dict({
-          'allow_redirects': True,
-          'headers': dict({
-            'Accept': 'application/json, text/plain, */*',
-            'Content-Type': 'application/json',
-            'User-Agent': 'Mozilla/5.0',
-            'client-id': 'netzonline',
-            'x-xsrf-token': 'mocked-token-value',
-          }),
-          'json': None,
-        }),
-      ),
-    ]),
-    tuple(
-      'GET',
-      URL('https://eservice.netzooe.at/service/v1.0/session'),
-    ): list([
-      RequestCall(
-        args=tuple(
-        ),
-        kwargs=dict({
-          'allow_redirects': True,
-          'headers': dict({
-            'Accept': 'application/json, text/plain, */*',
-            'User-Agent': 'Mozilla/5.0',
-            'client-id': 'netzonline',
-          }),
-        }),
-      ),
-    ]),
-    tuple(
-      'POST',
-      URL('https://eservice.netzooe.at/service/j_security_check'),
-    ): list([
-      RequestCall(
-        args=tuple(
-        ),
-        kwargs=dict({
-          'allow_redirects': True,
-          'data': None,
-          'headers': dict({
-            'Accept': 'application/json, text/plain, */*',
-            'Content-Type': 'application/json',
-            'User-Agent': 'Mozilla/5.0',
-            'client-id': 'netzonline',
-          }),
-          'json': dict({
-            'j_password': 'test',
-            'j_username': 'test',
-          }),
-        }),
-      ),
-    ]),
-  })
-# ---
-# name: TestHappyPathNetzOOEeServiceAPI.test_consent_requests[status2-https://eservice.netzooe.at/service/v1.0/consent-requests?status=INITIAL,SENT]
-  dict({
-    tuple(
-      'GET',
-      URL('https://eservice.netzooe.at/service/logout'),
-    ): list([
-      RequestCall(
-        args=tuple(
-        ),
-        kwargs=dict({
-          'allow_redirects': True,
-          'headers': dict({
-            'Accept': 'application/json, text/plain, */*',
-            'User-Agent': 'Mozilla/5.0',
-            'client-id': 'netzonline',
-          }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -197,6 +36,7 @@
             'x-xsrf-token': 'mocked-token-value',
           }),
           'json': None,
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -214,6 +54,7 @@
             'User-Agent': 'Mozilla/5.0',
             'client-id': 'netzonline',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -237,12 +78,13 @@
             'j_password': 'test',
             'j_username': 'test',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
   })
 # ---
-# name: TestHappyPathNetzOOEeServiceAPI.test_consents[ConsentsStatus.ACTIVE-https://eservice.netzooe.at/service/v1.0/consents?status=ACTIVE]
+# name: test_consent_requests[no_status]
   dict({
     tuple(
       'GET',
@@ -258,12 +100,13 @@
             'User-Agent': 'Mozilla/5.0',
             'client-id': 'netzonline',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
     tuple(
       'GET',
-      URL('https://eservice.netzooe.at/service/v1.0/consents?status=ACTIVE'),
+      URL('https://eservice.netzooe.at/service/v1.0/consent-requests'),
     ): list([
       RequestCall(
         args=tuple(
@@ -278,6 +121,7 @@
             'x-xsrf-token': 'mocked-token-value',
           }),
           'json': None,
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -295,6 +139,7 @@
             'User-Agent': 'Mozilla/5.0',
             'client-id': 'netzonline',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -318,12 +163,13 @@
             'j_password': 'test',
             'j_username': 'test',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
   })
 # ---
-# name: TestHappyPathNetzOOEeServiceAPI.test_consents[status0-https://eservice.netzooe.at/service/v1.0/consents?status=ACTIVE,ACTIVE_UNCHANGEABLE]
+# name: test_consent_requests[single_status]
   dict({
     tuple(
       'GET',
@@ -339,6 +185,92 @@
             'User-Agent': 'Mozilla/5.0',
             'client-id': 'netzonline',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
+        }),
+      ),
+    ]),
+    tuple(
+      'GET',
+      URL('https://eservice.netzooe.at/service/v1.0/consent-requests?status=CONFIRMED'),
+    ): list([
+      RequestCall(
+        args=tuple(
+        ),
+        kwargs=dict({
+          'allow_redirects': True,
+          'headers': dict({
+            'Accept': 'application/json, text/plain, */*',
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0',
+            'client-id': 'netzonline',
+            'x-xsrf-token': 'mocked-token-value',
+          }),
+          'json': None,
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
+        }),
+      ),
+    ]),
+    tuple(
+      'GET',
+      URL('https://eservice.netzooe.at/service/v1.0/session'),
+    ): list([
+      RequestCall(
+        args=tuple(
+        ),
+        kwargs=dict({
+          'allow_redirects': True,
+          'headers': dict({
+            'Accept': 'application/json, text/plain, */*',
+            'User-Agent': 'Mozilla/5.0',
+            'client-id': 'netzonline',
+          }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
+        }),
+      ),
+    ]),
+    tuple(
+      'POST',
+      URL('https://eservice.netzooe.at/service/j_security_check'),
+    ): list([
+      RequestCall(
+        args=tuple(
+        ),
+        kwargs=dict({
+          'allow_redirects': True,
+          'data': None,
+          'headers': dict({
+            'Accept': 'application/json, text/plain, */*',
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0',
+            'client-id': 'netzonline',
+          }),
+          'json': dict({
+            'j_password': 'test',
+            'j_username': 'test',
+          }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
+        }),
+      ),
+    ]),
+  })
+# ---
+# name: test_consents[multiple_statuses]
+  dict({
+    tuple(
+      'GET',
+      URL('https://eservice.netzooe.at/service/logout'),
+    ): list([
+      RequestCall(
+        args=tuple(
+        ),
+        kwargs=dict({
+          'allow_redirects': True,
+          'headers': dict({
+            'Accept': 'application/json, text/plain, */*',
+            'User-Agent': 'Mozilla/5.0',
+            'client-id': 'netzonline',
+          }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -359,6 +291,7 @@
             'x-xsrf-token': 'mocked-token-value',
           }),
           'json': None,
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -376,6 +309,7 @@
             'User-Agent': 'Mozilla/5.0',
             'client-id': 'netzonline',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -399,12 +333,13 @@
             'j_password': 'test',
             'j_username': 'test',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
   })
 # ---
-# name: TestHappyPathNetzOOEeServiceAPI.test_consumptions_profile[pods0-ConsumptionsDimension.ENERGY]
+# name: test_consents[no_status]
   dict({
     tuple(
       'GET',
@@ -420,6 +355,28 @@
             'User-Agent': 'Mozilla/5.0',
             'client-id': 'netzonline',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
+        }),
+      ),
+    ]),
+    tuple(
+      'GET',
+      URL('https://eservice.netzooe.at/service/v1.0/consents'),
+    ): list([
+      RequestCall(
+        args=tuple(
+        ),
+        kwargs=dict({
+          'allow_redirects': True,
+          'headers': dict({
+            'Accept': 'application/json, text/plain, */*',
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0',
+            'client-id': 'netzonline',
+            'x-xsrf-token': 'mocked-token-value',
+          }),
+          'json': None,
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -437,6 +394,7 @@
             'User-Agent': 'Mozilla/5.0',
             'client-id': 'netzonline',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -460,6 +418,156 @@
             'j_password': 'test',
             'j_username': 'test',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
+        }),
+      ),
+    ]),
+  })
+# ---
+# name: test_consents[single_status]
+  dict({
+    tuple(
+      'GET',
+      URL('https://eservice.netzooe.at/service/logout'),
+    ): list([
+      RequestCall(
+        args=tuple(
+        ),
+        kwargs=dict({
+          'allow_redirects': True,
+          'headers': dict({
+            'Accept': 'application/json, text/plain, */*',
+            'User-Agent': 'Mozilla/5.0',
+            'client-id': 'netzonline',
+          }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
+        }),
+      ),
+    ]),
+    tuple(
+      'GET',
+      URL('https://eservice.netzooe.at/service/v1.0/consents?status=ACTIVE'),
+    ): list([
+      RequestCall(
+        args=tuple(
+        ),
+        kwargs=dict({
+          'allow_redirects': True,
+          'headers': dict({
+            'Accept': 'application/json, text/plain, */*',
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0',
+            'client-id': 'netzonline',
+            'x-xsrf-token': 'mocked-token-value',
+          }),
+          'json': None,
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
+        }),
+      ),
+    ]),
+    tuple(
+      'GET',
+      URL('https://eservice.netzooe.at/service/v1.0/session'),
+    ): list([
+      RequestCall(
+        args=tuple(
+        ),
+        kwargs=dict({
+          'allow_redirects': True,
+          'headers': dict({
+            'Accept': 'application/json, text/plain, */*',
+            'User-Agent': 'Mozilla/5.0',
+            'client-id': 'netzonline',
+          }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
+        }),
+      ),
+    ]),
+    tuple(
+      'POST',
+      URL('https://eservice.netzooe.at/service/j_security_check'),
+    ): list([
+      RequestCall(
+        args=tuple(
+        ),
+        kwargs=dict({
+          'allow_redirects': True,
+          'data': None,
+          'headers': dict({
+            'Accept': 'application/json, text/plain, */*',
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0',
+            'client-id': 'netzonline',
+          }),
+          'json': dict({
+            'j_password': 'test',
+            'j_username': 'test',
+          }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
+        }),
+      ),
+    ]),
+  })
+# ---
+# name: test_consumptions_profile[energy_community_energy]
+  dict({
+    tuple(
+      'GET',
+      URL('https://eservice.netzooe.at/service/logout'),
+    ): list([
+      RequestCall(
+        args=tuple(
+        ),
+        kwargs=dict({
+          'allow_redirects': True,
+          'headers': dict({
+            'Accept': 'application/json, text/plain, */*',
+            'User-Agent': 'Mozilla/5.0',
+            'client-id': 'netzonline',
+          }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
+        }),
+      ),
+    ]),
+    tuple(
+      'GET',
+      URL('https://eservice.netzooe.at/service/v1.0/session'),
+    ): list([
+      RequestCall(
+        args=tuple(
+        ),
+        kwargs=dict({
+          'allow_redirects': True,
+          'headers': dict({
+            'Accept': 'application/json, text/plain, */*',
+            'User-Agent': 'Mozilla/5.0',
+            'client-id': 'netzonline',
+          }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
+        }),
+      ),
+    ]),
+    tuple(
+      'POST',
+      URL('https://eservice.netzooe.at/service/j_security_check'),
+    ): list([
+      RequestCall(
+        args=tuple(
+        ),
+        kwargs=dict({
+          'allow_redirects': True,
+          'data': None,
+          'headers': dict({
+            'Accept': 'application/json, text/plain, */*',
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0',
+            'client-id': 'netzonline',
+          }),
+          'json': dict({
+            'j_password': 'test',
+            'j_username': 'test',
+          }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -496,12 +604,13 @@
               }),
             ]),
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
   })
 # ---
-# name: TestHappyPathNetzOOEeServiceAPI.test_consumptions_profile[pods1-ConsumptionsDimension.ENERGY]
+# name: test_consumptions_profile[enums_power]
   dict({
     tuple(
       'GET',
@@ -517,6 +626,7 @@
             'User-Agent': 'Mozilla/5.0',
             'client-id': 'netzonline',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -534,6 +644,7 @@
             'User-Agent': 'Mozilla/5.0',
             'client-id': 'netzonline',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -557,102 +668,7 @@
             'j_password': 'test',
             'j_username': 'test',
           }),
-        }),
-      ),
-    ]),
-    tuple(
-      'POST',
-      URL('https://eservice.netzooe.at/service/v1.0/consumptions/profile/active'),
-    ): list([
-      RequestCall(
-        args=tuple(
-        ),
-        kwargs=dict({
-          'allow_redirects': True,
-          'data': None,
-          'headers': dict({
-            'Accept': 'application/json, text/plain, */*',
-            'Content-Type': 'application/json',
-            'User-Agent': 'Mozilla/5.0',
-            'client-id': 'netzonline',
-            'x-xsrf-token': 'mocked-token-value',
-          }),
-          'json': dict({
-            'dimension': 'ENERGY',
-            'pods': list([
-              dict({
-                'bestAvailableGranularity': 'mocked-granularity',
-                'contractAccountNumber': '123',
-                'meterPointAdministrationNumber': 'AT123',
-                'timerange': dict({
-                  'from': '2026-01-01',
-                  'to': '2026-01-30',
-                }),
-                'type': 'mocked-profile',
-              }),
-            ]),
-          }),
-        }),
-      ),
-    ]),
-  })
-# ---
-# name: TestHappyPathNetzOOEeServiceAPI.test_consumptions_profile[pods2-ConsumptionsDimension.POWER]
-  dict({
-    tuple(
-      'GET',
-      URL('https://eservice.netzooe.at/service/logout'),
-    ): list([
-      RequestCall(
-        args=tuple(
-        ),
-        kwargs=dict({
-          'allow_redirects': True,
-          'headers': dict({
-            'Accept': 'application/json, text/plain, */*',
-            'User-Agent': 'Mozilla/5.0',
-            'client-id': 'netzonline',
-          }),
-        }),
-      ),
-    ]),
-    tuple(
-      'GET',
-      URL('https://eservice.netzooe.at/service/v1.0/session'),
-    ): list([
-      RequestCall(
-        args=tuple(
-        ),
-        kwargs=dict({
-          'allow_redirects': True,
-          'headers': dict({
-            'Accept': 'application/json, text/plain, */*',
-            'User-Agent': 'Mozilla/5.0',
-            'client-id': 'netzonline',
-          }),
-        }),
-      ),
-    ]),
-    tuple(
-      'POST',
-      URL('https://eservice.netzooe.at/service/j_security_check'),
-    ): list([
-      RequestCall(
-        args=tuple(
-        ),
-        kwargs=dict({
-          'allow_redirects': True,
-          'data': None,
-          'headers': dict({
-            'Accept': 'application/json, text/plain, */*',
-            'Content-Type': 'application/json',
-            'User-Agent': 'Mozilla/5.0',
-            'client-id': 'netzonline',
-          }),
-          'json': dict({
-            'j_password': 'test',
-            'j_username': 'test',
-          }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -688,12 +704,13 @@
               }),
             ]),
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
   })
 # ---
-# name: TestHappyPathNetzOOEeServiceAPI.test_consumptions_profiles[ConsumptionsProfilesBranch.ELECTRICITY-https://eservice.netzooe.at/service/v1.0/consumptions/profiles?branch=STROM]
+# name: test_consumptions_profile[multiple_pods_energy]
   dict({
     tuple(
       'GET',
@@ -709,26 +726,7 @@
             'User-Agent': 'Mozilla/5.0',
             'client-id': 'netzonline',
           }),
-        }),
-      ),
-    ]),
-    tuple(
-      'GET',
-      URL('https://eservice.netzooe.at/service/v1.0/consumptions/profiles?branch=STROM'),
-    ): list([
-      RequestCall(
-        args=tuple(
-        ),
-        kwargs=dict({
-          'allow_redirects': True,
-          'headers': dict({
-            'Accept': 'application/json, text/plain, */*',
-            'Content-Type': 'application/json',
-            'User-Agent': 'Mozilla/5.0',
-            'client-id': 'netzonline',
-            'x-xsrf-token': 'mocked-token-value',
-          }),
-          'json': None,
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -746,6 +744,7 @@
             'User-Agent': 'Mozilla/5.0',
             'client-id': 'netzonline',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -769,12 +768,60 @@
             'j_password': 'test',
             'j_username': 'test',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
+        }),
+      ),
+    ]),
+    tuple(
+      'POST',
+      URL('https://eservice.netzooe.at/service/v1.0/consumptions/profile/active'),
+    ): list([
+      RequestCall(
+        args=tuple(
+        ),
+        kwargs=dict({
+          'allow_redirects': True,
+          'data': None,
+          'headers': dict({
+            'Accept': 'application/json, text/plain, */*',
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0',
+            'client-id': 'netzonline',
+            'x-xsrf-token': 'mocked-token-value',
+          }),
+          'json': dict({
+            'dimension': 'ENERGY',
+            'pods': list([
+              dict({
+                'bestAvailableGranularity': 'QUARTER_OF_AN_HOUR',
+                'contractAccountNumber': '123',
+                'meterPointAdministrationNumber': 'AT123',
+                'timerange': dict({
+                  'from': '2026-01-01',
+                  'to': '2026-01-30',
+                }),
+                'type': 'ACTIVE_CURRENT',
+              }),
+              dict({
+                'bestAvailableGranularity': 'QUARTER_OF_AN_HOUR',
+                'contractAccountNumber': '456',
+                'energyCommunityId': '789',
+                'meterPointAdministrationNumber': 'AT456',
+                'timerange': dict({
+                  'from': '2026-01-01',
+                  'to': '2026-01-30',
+                }),
+                'type': 'ACTIVE_CURRENT',
+              }),
+            ]),
+          }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
   })
 # ---
-# name: TestHappyPathNetzOOEeServiceAPI.test_consumptions_profiles[None-https://eservice.netzooe.at/service/v1.0/consumptions/profiles]
+# name: test_consumptions_profile[no_energy_community_energy]
   dict({
     tuple(
       'GET',
@@ -790,6 +837,107 @@
             'User-Agent': 'Mozilla/5.0',
             'client-id': 'netzonline',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
+        }),
+      ),
+    ]),
+    tuple(
+      'GET',
+      URL('https://eservice.netzooe.at/service/v1.0/session'),
+    ): list([
+      RequestCall(
+        args=tuple(
+        ),
+        kwargs=dict({
+          'allow_redirects': True,
+          'headers': dict({
+            'Accept': 'application/json, text/plain, */*',
+            'User-Agent': 'Mozilla/5.0',
+            'client-id': 'netzonline',
+          }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
+        }),
+      ),
+    ]),
+    tuple(
+      'POST',
+      URL('https://eservice.netzooe.at/service/j_security_check'),
+    ): list([
+      RequestCall(
+        args=tuple(
+        ),
+        kwargs=dict({
+          'allow_redirects': True,
+          'data': None,
+          'headers': dict({
+            'Accept': 'application/json, text/plain, */*',
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0',
+            'client-id': 'netzonline',
+          }),
+          'json': dict({
+            'j_password': 'test',
+            'j_username': 'test',
+          }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
+        }),
+      ),
+    ]),
+    tuple(
+      'POST',
+      URL('https://eservice.netzooe.at/service/v1.0/consumptions/profile/active'),
+    ): list([
+      RequestCall(
+        args=tuple(
+        ),
+        kwargs=dict({
+          'allow_redirects': True,
+          'data': None,
+          'headers': dict({
+            'Accept': 'application/json, text/plain, */*',
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0',
+            'client-id': 'netzonline',
+            'x-xsrf-token': 'mocked-token-value',
+          }),
+          'json': dict({
+            'dimension': 'ENERGY',
+            'pods': list([
+              dict({
+                'bestAvailableGranularity': 'mocked-granularity',
+                'contractAccountNumber': '123',
+                'meterPointAdministrationNumber': 'AT123',
+                'timerange': dict({
+                  'from': '2026-01-01',
+                  'to': '2026-01-30',
+                }),
+                'type': 'mocked-profile',
+              }),
+            ]),
+          }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
+        }),
+      ),
+    ]),
+  })
+# ---
+# name: test_consumptions_profiles[no_branch]
+  dict({
+    tuple(
+      'GET',
+      URL('https://eservice.netzooe.at/service/logout'),
+    ): list([
+      RequestCall(
+        args=tuple(
+        ),
+        kwargs=dict({
+          'allow_redirects': True,
+          'headers': dict({
+            'Accept': 'application/json, text/plain, */*',
+            'User-Agent': 'Mozilla/5.0',
+            'client-id': 'netzonline',
+          }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -810,6 +958,7 @@
             'x-xsrf-token': 'mocked-token-value',
           }),
           'json': None,
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -827,6 +976,7 @@
             'User-Agent': 'Mozilla/5.0',
             'client-id': 'netzonline',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -850,12 +1000,13 @@
             'j_password': 'test',
             'j_username': 'test',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
   })
 # ---
-# name: TestHappyPathNetzOOEeServiceAPI.test_consumptions_profiles_active_only
+# name: test_consumptions_profiles[single_branch]
   dict({
     tuple(
       'GET',
@@ -871,6 +1022,92 @@
             'User-Agent': 'Mozilla/5.0',
             'client-id': 'netzonline',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
+        }),
+      ),
+    ]),
+    tuple(
+      'GET',
+      URL('https://eservice.netzooe.at/service/v1.0/consumptions/profiles?branch=STROM'),
+    ): list([
+      RequestCall(
+        args=tuple(
+        ),
+        kwargs=dict({
+          'allow_redirects': True,
+          'headers': dict({
+            'Accept': 'application/json, text/plain, */*',
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0',
+            'client-id': 'netzonline',
+            'x-xsrf-token': 'mocked-token-value',
+          }),
+          'json': None,
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
+        }),
+      ),
+    ]),
+    tuple(
+      'GET',
+      URL('https://eservice.netzooe.at/service/v1.0/session'),
+    ): list([
+      RequestCall(
+        args=tuple(
+        ),
+        kwargs=dict({
+          'allow_redirects': True,
+          'headers': dict({
+            'Accept': 'application/json, text/plain, */*',
+            'User-Agent': 'Mozilla/5.0',
+            'client-id': 'netzonline',
+          }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
+        }),
+      ),
+    ]),
+    tuple(
+      'POST',
+      URL('https://eservice.netzooe.at/service/j_security_check'),
+    ): list([
+      RequestCall(
+        args=tuple(
+        ),
+        kwargs=dict({
+          'allow_redirects': True,
+          'data': None,
+          'headers': dict({
+            'Accept': 'application/json, text/plain, */*',
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0',
+            'client-id': 'netzonline',
+          }),
+          'json': dict({
+            'j_password': 'test',
+            'j_username': 'test',
+          }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
+        }),
+      ),
+    ]),
+  })
+# ---
+# name: test_consumptions_profiles_active_only
+  dict({
+    tuple(
+      'GET',
+      URL('https://eservice.netzooe.at/service/logout'),
+    ): list([
+      RequestCall(
+        args=tuple(
+        ),
+        kwargs=dict({
+          'allow_redirects': True,
+          'headers': dict({
+            'Accept': 'application/json, text/plain, */*',
+            'User-Agent': 'Mozilla/5.0',
+            'client-id': 'netzonline',
+          }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -891,6 +1128,7 @@
             'x-xsrf-token': 'mocked-token-value',
           }),
           'json': None,
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -908,6 +1146,7 @@
             'User-Agent': 'Mozilla/5.0',
             'client-id': 'netzonline',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -931,12 +1170,13 @@
             'j_password': 'test',
             'j_username': 'test',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
   })
 # ---
-# name: TestHappyPathNetzOOEeServiceAPI.test_contract_account
+# name: test_contract_account
   dict({
     tuple(
       'GET',
@@ -952,6 +1192,7 @@
             'User-Agent': 'Mozilla/5.0',
             'client-id': 'netzonline',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -972,6 +1213,7 @@
             'x-xsrf-token': 'mocked-token-value',
           }),
           'json': None,
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -989,6 +1231,7 @@
             'User-Agent': 'Mozilla/5.0',
             'client-id': 'netzonline',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -1012,12 +1255,13 @@
             'j_password': 'test',
             'j_username': 'test',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
   })
 # ---
-# name: TestHappyPathNetzOOEeServiceAPI.test_dashboard
+# name: test_dashboard
   dict({
     tuple(
       'GET',
@@ -1033,6 +1277,7 @@
             'User-Agent': 'Mozilla/5.0',
             'client-id': 'netzonline',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -1053,6 +1298,7 @@
             'x-xsrf-token': 'mocked-token-value',
           }),
           'json': None,
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -1070,6 +1316,7 @@
             'User-Agent': 'Mozilla/5.0',
             'client-id': 'netzonline',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -1093,12 +1340,13 @@
             'j_password': 'test',
             'j_username': 'test',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
   })
 # ---
-# name: TestHappyPathNetzOOEeServiceAPI.test_dashboard_headers[ConsumptionsProfilesBranch.ELECTRICITY-True-https://eservice.netzooe.at/service/v1.0/dashboard/headers?branch=STROM&activeOnly=true]
+# name: test_dashboard_headers[multiple_branches_not_active_only]
   dict({
     tuple(
       'GET',
@@ -1114,12 +1362,13 @@
             'User-Agent': 'Mozilla/5.0',
             'client-id': 'netzonline',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
     tuple(
       'GET',
-      URL('https://eservice.netzooe.at/service/v1.0/dashboard/headers?activeOnly=true&branch=STROM'),
+      URL('https://eservice.netzooe.at/service/v1.0/dashboard/headers?activeOnly=false'),
     ): list([
       RequestCall(
         args=tuple(
@@ -1134,6 +1383,7 @@
             'x-xsrf-token': 'mocked-token-value',
           }),
           'json': None,
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -1151,6 +1401,7 @@
             'User-Agent': 'Mozilla/5.0',
             'client-id': 'netzonline',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -1174,12 +1425,13 @@
             'j_password': 'test',
             'j_username': 'test',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
   })
 # ---
-# name: TestHappyPathNetzOOEeServiceAPI.test_dashboard_headers[None-None-https://eservice.netzooe.at/service/v1.0/dashboard/headers]
+# name: test_dashboard_headers[no_filter]
   dict({
     tuple(
       'GET',
@@ -1195,6 +1447,7 @@
             'User-Agent': 'Mozilla/5.0',
             'client-id': 'netzonline',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -1215,6 +1468,7 @@
             'x-xsrf-token': 'mocked-token-value',
           }),
           'json': None,
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -1232,6 +1486,7 @@
             'User-Agent': 'Mozilla/5.0',
             'client-id': 'netzonline',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -1255,12 +1510,13 @@
             'j_password': 'test',
             'j_username': 'test',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
   })
 # ---
-# name: TestHappyPathNetzOOEeServiceAPI.test_dashboard_headers[branch2-False-https://eservice.netzooe.at/service/v1.0/dashboard/headers?branch=STROM,GAS&activeOnly=false]
+# name: test_dashboard_headers[single_branch_active_only]
   dict({
     tuple(
       'GET',
@@ -1276,12 +1532,13 @@
             'User-Agent': 'Mozilla/5.0',
             'client-id': 'netzonline',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
     tuple(
       'GET',
-      URL('https://eservice.netzooe.at/service/v1.0/dashboard/headers?activeOnly=false&branch=STROM,GAS'),
+      URL('https://eservice.netzooe.at/service/v1.0/dashboard/headers?activeOnly=true&branch=STROM'),
     ): list([
       RequestCall(
         args=tuple(
@@ -1296,6 +1553,7 @@
             'x-xsrf-token': 'mocked-token-value',
           }),
           'json': None,
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -1313,6 +1571,7 @@
             'User-Agent': 'Mozilla/5.0',
             'client-id': 'netzonline',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -1336,12 +1595,13 @@
             'j_password': 'test',
             'j_username': 'test',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
   })
 # ---
-# name: TestHappyPathNetzOOEeServiceAPI.test_dashboard_without_login
+# name: test_login
   dict({
     tuple(
       'GET',
@@ -1357,6 +1617,301 @@
             'User-Agent': 'Mozilla/5.0',
             'client-id': 'netzonline',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
+        }),
+      ),
+    ]),
+    tuple(
+      'GET',
+      URL('https://eservice.netzooe.at/service/v1.0/session'),
+    ): list([
+      RequestCall(
+        args=tuple(
+        ),
+        kwargs=dict({
+          'allow_redirects': True,
+          'headers': dict({
+            'Accept': 'application/json, text/plain, */*',
+            'User-Agent': 'Mozilla/5.0',
+            'client-id': 'netzonline',
+          }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
+        }),
+      ),
+    ]),
+    tuple(
+      'POST',
+      URL('https://eservice.netzooe.at/service/j_security_check'),
+    ): list([
+      RequestCall(
+        args=tuple(
+        ),
+        kwargs=dict({
+          'allow_redirects': True,
+          'data': None,
+          'headers': dict({
+            'Accept': 'application/json, text/plain, */*',
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0',
+            'client-id': 'netzonline',
+          }),
+          'json': dict({
+            'j_password': 'test',
+            'j_username': 'test',
+          }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
+        }),
+      ),
+    ]),
+  })
+# ---
+# name: test_login_failed[bad_request]
+  dict({
+    tuple(
+      'POST',
+      URL('https://eservice.netzooe.at/service/j_security_check'),
+    ): list([
+      RequestCall(
+        args=tuple(
+        ),
+        kwargs=dict({
+          'allow_redirects': True,
+          'data': None,
+          'headers': dict({
+            'Accept': 'application/json, text/plain, */*',
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0',
+            'client-id': 'netzonline',
+          }),
+          'json': dict({
+            'j_password': 'test',
+            'j_username': 'test',
+          }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
+        }),
+      ),
+    ]),
+  })
+# ---
+# name: test_login_failed[unauthorized]
+  dict({
+    tuple(
+      'POST',
+      URL('https://eservice.netzooe.at/service/j_security_check'),
+    ): list([
+      RequestCall(
+        args=tuple(
+        ),
+        kwargs=dict({
+          'allow_redirects': True,
+          'data': None,
+          'headers': dict({
+            'Accept': 'application/json, text/plain, */*',
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0',
+            'client-id': 'netzonline',
+          }),
+          'json': dict({
+            'j_password': 'test',
+            'j_username': 'test',
+          }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
+        }),
+      ),
+    ]),
+  })
+# ---
+# name: test_login_session_request_failed
+  dict({
+    tuple(
+      'GET',
+      URL('https://eservice.netzooe.at/service/v1.0/session'),
+    ): list([
+      RequestCall(
+        args=tuple(
+        ),
+        kwargs=dict({
+          'allow_redirects': True,
+          'headers': dict({
+            'Accept': 'application/json, text/plain, */*',
+            'User-Agent': 'Mozilla/5.0',
+            'client-id': 'netzonline',
+          }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
+        }),
+      ),
+    ]),
+    tuple(
+      'POST',
+      URL('https://eservice.netzooe.at/service/j_security_check'),
+    ): list([
+      RequestCall(
+        args=tuple(
+        ),
+        kwargs=dict({
+          'allow_redirects': True,
+          'data': None,
+          'headers': dict({
+            'Accept': 'application/json, text/plain, */*',
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0',
+            'client-id': 'netzonline',
+          }),
+          'json': dict({
+            'j_password': 'test',
+            'j_username': 'test',
+          }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
+        }),
+      ),
+    ]),
+  })
+# ---
+# name: test_login_still_logged_in
+  dict({
+    tuple(
+      'GET',
+      URL('https://eservice.netzooe.at/service/logout'),
+    ): list([
+      RequestCall(
+        args=tuple(
+        ),
+        kwargs=dict({
+          'allow_redirects': True,
+          'headers': dict({
+            'Accept': 'application/json, text/plain, */*',
+            'User-Agent': 'Mozilla/5.0',
+            'client-id': 'netzonline',
+          }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
+        }),
+      ),
+      RequestCall(
+        args=tuple(
+        ),
+        kwargs=dict({
+          'allow_redirects': True,
+          'headers': dict({
+            'Accept': 'application/json, text/plain, */*',
+            'User-Agent': 'Mozilla/5.0',
+            'client-id': 'netzonline',
+          }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
+        }),
+      ),
+    ]),
+    tuple(
+      'GET',
+      URL('https://eservice.netzooe.at/service/v1.0/session'),
+    ): list([
+      RequestCall(
+        args=tuple(
+        ),
+        kwargs=dict({
+          'allow_redirects': True,
+          'headers': dict({
+            'Accept': 'application/json, text/plain, */*',
+            'User-Agent': 'Mozilla/5.0',
+            'client-id': 'netzonline',
+          }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
+        }),
+      ),
+      RequestCall(
+        args=tuple(
+        ),
+        kwargs=dict({
+          'allow_redirects': True,
+          'headers': dict({
+            'Accept': 'application/json, text/plain, */*',
+            'User-Agent': 'Mozilla/5.0',
+            'client-id': 'netzonline',
+          }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
+        }),
+      ),
+    ]),
+    tuple(
+      'POST',
+      URL('https://eservice.netzooe.at/service/j_security_check'),
+    ): list([
+      RequestCall(
+        args=tuple(
+        ),
+        kwargs=dict({
+          'allow_redirects': True,
+          'data': None,
+          'headers': dict({
+            'Accept': 'application/json, text/plain, */*',
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0',
+            'client-id': 'netzonline',
+          }),
+          'json': dict({
+            'j_password': 'test',
+            'j_username': 'test',
+          }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
+        }),
+      ),
+      RequestCall(
+        args=tuple(
+        ),
+        kwargs=dict({
+          'allow_redirects': True,
+          'data': None,
+          'headers': dict({
+            'Accept': 'application/json, text/plain, */*',
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0',
+            'client-id': 'netzonline',
+          }),
+          'json': dict({
+            'j_password': 'test',
+            'j_username': 'test',
+          }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
+        }),
+      ),
+      RequestCall(
+        args=tuple(
+        ),
+        kwargs=dict({
+          'allow_redirects': True,
+          'data': None,
+          'headers': dict({
+            'Accept': 'application/json, text/plain, */*',
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0',
+            'client-id': 'netzonline',
+          }),
+          'json': dict({
+            'j_password': 'test',
+            'j_username': 'test',
+          }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
+        }),
+      ),
+    ]),
+  })
+# ---
+# name: test_request_logs_in_automatically
+  dict({
+    tuple(
+      'GET',
+      URL('https://eservice.netzooe.at/service/logout'),
+    ): list([
+      RequestCall(
+        args=tuple(
+        ),
+        kwargs=dict({
+          'allow_redirects': True,
+          'headers': dict({
+            'Accept': 'application/json, text/plain, */*',
+            'User-Agent': 'Mozilla/5.0',
+            'client-id': 'netzonline',
+          }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -1377,6 +1932,7 @@
             'x-xsrf-token': 'mocked-token-value',
           }),
           'json': None,
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -1394,6 +1950,7 @@
             'User-Agent': 'Mozilla/5.0',
             'client-id': 'netzonline',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -1417,12 +1974,13 @@
             'j_password': 'test',
             'j_username': 'test',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
   })
 # ---
-# name: TestHappyPathNetzOOEeServiceAPI.test_login
+# name: test_request_relogin_after_401
   dict({
     tuple(
       'GET',
@@ -1438,188 +1996,7 @@
             'User-Agent': 'Mozilla/5.0',
             'client-id': 'netzonline',
           }),
-        }),
-      ),
-    ]),
-    tuple(
-      'GET',
-      URL('https://eservice.netzooe.at/service/v1.0/session'),
-    ): list([
-      RequestCall(
-        args=tuple(
-        ),
-        kwargs=dict({
-          'allow_redirects': True,
-          'headers': dict({
-            'Accept': 'application/json, text/plain, */*',
-            'User-Agent': 'Mozilla/5.0',
-            'client-id': 'netzonline',
-          }),
-        }),
-      ),
-    ]),
-    tuple(
-      'POST',
-      URL('https://eservice.netzooe.at/service/j_security_check'),
-    ): list([
-      RequestCall(
-        args=tuple(
-        ),
-        kwargs=dict({
-          'allow_redirects': True,
-          'data': None,
-          'headers': dict({
-            'Accept': 'application/json, text/plain, */*',
-            'Content-Type': 'application/json',
-            'User-Agent': 'Mozilla/5.0',
-            'client-id': 'netzonline',
-          }),
-          'json': dict({
-            'j_password': 'test',
-            'j_username': 'test',
-          }),
-        }),
-      ),
-    ]),
-  })
-# ---
-# name: TestHappyPathNetzOOEeServiceAPI.test_login_still_logged_in
-  dict({
-    tuple(
-      'GET',
-      URL('https://eservice.netzooe.at/service/logout'),
-    ): list([
-      RequestCall(
-        args=tuple(
-        ),
-        kwargs=dict({
-          'allow_redirects': True,
-          'headers': dict({
-            'Accept': 'application/json, text/plain, */*',
-            'User-Agent': 'Mozilla/5.0',
-            'client-id': 'netzonline',
-          }),
-        }),
-      ),
-      RequestCall(
-        args=tuple(
-        ),
-        kwargs=dict({
-          'allow_redirects': True,
-          'headers': dict({
-            'Accept': 'application/json, text/plain, */*',
-            'User-Agent': 'Mozilla/5.0',
-            'client-id': 'netzonline',
-          }),
-        }),
-      ),
-    ]),
-    tuple(
-      'GET',
-      URL('https://eservice.netzooe.at/service/v1.0/session'),
-    ): list([
-      RequestCall(
-        args=tuple(
-        ),
-        kwargs=dict({
-          'allow_redirects': True,
-          'headers': dict({
-            'Accept': 'application/json, text/plain, */*',
-            'User-Agent': 'Mozilla/5.0',
-            'client-id': 'netzonline',
-          }),
-        }),
-      ),
-      RequestCall(
-        args=tuple(
-        ),
-        kwargs=dict({
-          'allow_redirects': True,
-          'headers': dict({
-            'Accept': 'application/json, text/plain, */*',
-            'User-Agent': 'Mozilla/5.0',
-            'client-id': 'netzonline',
-          }),
-        }),
-      ),
-    ]),
-    tuple(
-      'POST',
-      URL('https://eservice.netzooe.at/service/j_security_check'),
-    ): list([
-      RequestCall(
-        args=tuple(
-        ),
-        kwargs=dict({
-          'allow_redirects': True,
-          'data': None,
-          'headers': dict({
-            'Accept': 'application/json, text/plain, */*',
-            'Content-Type': 'application/json',
-            'User-Agent': 'Mozilla/5.0',
-            'client-id': 'netzonline',
-          }),
-          'json': dict({
-            'j_password': 'test',
-            'j_username': 'test',
-          }),
-        }),
-      ),
-      RequestCall(
-        args=tuple(
-        ),
-        kwargs=dict({
-          'allow_redirects': True,
-          'data': None,
-          'headers': dict({
-            'Accept': 'application/json, text/plain, */*',
-            'Content-Type': 'application/json',
-            'User-Agent': 'Mozilla/5.0',
-            'client-id': 'netzonline',
-          }),
-          'json': dict({
-            'j_password': 'test',
-            'j_username': 'test',
-          }),
-        }),
-      ),
-      RequestCall(
-        args=tuple(
-        ),
-        kwargs=dict({
-          'allow_redirects': True,
-          'data': None,
-          'headers': dict({
-            'Accept': 'application/json, text/plain, */*',
-            'Content-Type': 'application/json',
-            'User-Agent': 'Mozilla/5.0',
-            'client-id': 'netzonline',
-          }),
-          'json': dict({
-            'j_password': 'test',
-            'j_username': 'test',
-          }),
-        }),
-      ),
-    ]),
-  })
-# ---
-# name: TestHappyPathNetzOOEeServiceAPI.test_reconnect
-  dict({
-    tuple(
-      'GET',
-      URL('https://eservice.netzooe.at/service/logout'),
-    ): list([
-      RequestCall(
-        args=tuple(
-        ),
-        kwargs=dict({
-          'allow_redirects': True,
-          'headers': dict({
-            'Accept': 'application/json, text/plain, */*',
-            'User-Agent': 'Mozilla/5.0',
-            'client-id': 'netzonline',
-          }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -1640,6 +2017,7 @@
             'x-xsrf-token': 'mocked-token-value',
           }),
           'json': None,
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
       RequestCall(
@@ -1655,6 +2033,7 @@
             'x-xsrf-token': 'mocked-token-value',
           }),
           'json': None,
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -1672,6 +2051,7 @@
             'User-Agent': 'Mozilla/5.0',
             'client-id': 'netzonline',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
       RequestCall(
@@ -1684,122 +2064,7 @@
             'User-Agent': 'Mozilla/5.0',
             'client-id': 'netzonline',
           }),
-        }),
-      ),
-    ]),
-    tuple(
-      'POST',
-      URL('https://eservice.netzooe.at/service/j_security_check'),
-    ): list([
-      RequestCall(
-        args=tuple(
-        ),
-        kwargs=dict({
-          'allow_redirects': True,
-          'data': None,
-          'headers': dict({
-            'Accept': 'application/json, text/plain, */*',
-            'Content-Type': 'application/json',
-            'User-Agent': 'Mozilla/5.0',
-            'client-id': 'netzonline',
-          }),
-          'json': dict({
-            'j_password': 'test',
-            'j_username': 'test',
-          }),
-        }),
-      ),
-      RequestCall(
-        args=tuple(
-        ),
-        kwargs=dict({
-          'allow_redirects': True,
-          'data': None,
-          'headers': dict({
-            'Accept': 'application/json, text/plain, */*',
-            'Content-Type': 'application/json',
-            'User-Agent': 'Mozilla/5.0',
-            'client-id': 'netzonline',
-          }),
-          'json': dict({
-            'j_password': 'test',
-            'j_username': 'test',
-          }),
-        }),
-      ),
-    ]),
-  })
-# ---
-# name: TestUnhappyPathNetzOOEeServiceAPI.test_login_failed[APIError-400-400 Bad Request: Bad request syntax or unsupported method]
-  dict({
-    tuple(
-      'POST',
-      URL('https://eservice.netzooe.at/service/j_security_check'),
-    ): list([
-      RequestCall(
-        args=tuple(
-        ),
-        kwargs=dict({
-          'allow_redirects': True,
-          'data': None,
-          'headers': dict({
-            'Accept': 'application/json, text/plain, */*',
-            'Content-Type': 'application/json',
-            'User-Agent': 'Mozilla/5.0',
-            'client-id': 'netzonline',
-          }),
-          'json': dict({
-            'j_password': 'test',
-            'j_username': 'test',
-          }),
-        }),
-      ),
-    ]),
-  })
-# ---
-# name: TestUnhappyPathNetzOOEeServiceAPI.test_login_failed[AuthenticationError-401-401 Unauthorized: No permission -- see authorization schemes]
-  dict({
-    tuple(
-      'POST',
-      URL('https://eservice.netzooe.at/service/j_security_check'),
-    ): list([
-      RequestCall(
-        args=tuple(
-        ),
-        kwargs=dict({
-          'allow_redirects': True,
-          'data': None,
-          'headers': dict({
-            'Accept': 'application/json, text/plain, */*',
-            'Content-Type': 'application/json',
-            'User-Agent': 'Mozilla/5.0',
-            'client-id': 'netzonline',
-          }),
-          'json': dict({
-            'j_password': 'test',
-            'j_username': 'test',
-          }),
-        }),
-      ),
-    ]),
-  })
-# ---
-# name: TestUnhappyPathNetzOOEeServiceAPI.test_session_failed
-  dict({
-    tuple(
-      'GET',
-      URL('https://eservice.netzooe.at/service/v1.0/session'),
-    ): list([
-      RequestCall(
-        args=tuple(
-        ),
-        kwargs=dict({
-          'allow_redirects': True,
-          'headers': dict({
-            'Accept': 'application/json, text/plain, */*',
-            'User-Agent': 'Mozilla/5.0',
-            'client-id': 'netzonline',
-          }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),
@@ -1823,6 +2088,26 @@
             'j_password': 'test',
             'j_username': 'test',
           }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
+        }),
+      ),
+      RequestCall(
+        args=tuple(
+        ),
+        kwargs=dict({
+          'allow_redirects': True,
+          'data': None,
+          'headers': dict({
+            'Accept': 'application/json, text/plain, */*',
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0',
+            'client-id': 'netzonline',
+          }),
+          'json': dict({
+            'j_password': 'test',
+            'j_username': 'test',
+          }),
+          'timeout': ClientTimeout(total=30, connect=None, sock_read=None, sock_connect=None, ceil_threshold=5),
         }),
       ),
     ]),

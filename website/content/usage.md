@@ -50,12 +50,13 @@ All methods of `NetzOOEeServiceAPI` are asynchronous. The client logs in automat
 logs in again once if the session has expired. The data methods return the raw JSON response of the portal.
 
 A passed `aiohttp` `ClientSession` is never closed by the client. Without a passed session, the client creates its
-own and closes it on `logout()` and if a login fails.
+own and closes it on `logout()` and if a login fails. Every request times out after 30 seconds (`API_DEFAULT_TIMEOUT`),
+also with a passed session.
 
-| Method     | Portal endpoint                                                    | Description                                                                                                      |
-|------------|--------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------|
-| `login()`  | `POST /service/j_security_check`, then `GET /service/v1.0/session` | Logs in and gets a new XSRF token. Optional, the client logs in automatically.                                   |
-| `logout()` | `GET /service/logout`                                              | Logs out and resets the XSRF token. A session created by the client is closed, a passed session is never closed. |
+| Method     | Portal endpoint                                                    | Description                                                                                                                                                             |
+|------------|--------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `login()`  | `POST /service/j_security_check`, then `GET /service/v1.0/session` | Logs in and gets a new XSRF token. Optional, the client logs in automatically.                                                                                          |
+| `logout()` | `GET /service/logout`                                              | Logs out and resets the XSRF token. A running login is cancelled and raises an `APIError`. A session created by the client is closed, a passed session is never closed. |
 
 ## Endpoints
 
@@ -73,15 +74,15 @@ See the [API client](/api) for all parameters and return values.
 
 ### Parameters
 
-| Parameter                                            | Type                                                      | Description                                                                                                          |
-|------------------------------------------------------|-----------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------|
-| `branch`                                             | `ConsumptionsProfilesBranch`, a list of members or `None` | Only returns entries of these branches (`ELECTRICITY`, `GAS`). `None` returns all.                                   |
-| `active_only`                                        | `bool` or `None`                                          | `True` only returns active contract accounts or points of delivery. `None` returns all.                              |
-| `status` of `consents()`                             | `ConsentsStatus`, a list of members or `None`             | `REQUESTED`, `QR_CODE_SENT`, `ACTIVE`, `ACTIVE_UNCHANGEABLE`, `TIMEOUT`, `REVOKED`, `CONCLUDED`. `None` returns all. |
-| `status` of `consent_requests()`                     | `ConsentRequestsStatus`, a list of members or `None`      | `INITIAL`, `SENT`, `CONFIRMED`, `REJECTED`, `TIMEOUT`. `None` returns all.                                           |
-| `business_partner_number`, `contract_account_number` | `str`                                                     | Numbers from `dashboard()`.                                                                                          |
-| `pods`                                               | `list[Pod]`                                               | Points of delivery and the time range to request, see [Consumption profile](#consumption-profile).                   |
-| `dimension`                                          | `ConsumptionsDimension`                                   | `ENERGY` (default), `POWER` or `VOLUME`.                                                                             |
+| Parameter                                            | Type                                                                                  | Description                                                                                                                           |
+|------------------------------------------------------|---------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------|
+| `branch`                                             | A `ConsumptionsProfilesBranch` member, an iterable of members (e.g. a list) or `None` | Only returns entries of these branches (`ELECTRICITY`, `GAS`). `None`, an empty list or both branches return all.                     |
+| `active_only`                                        | `bool` or `None`                                                                      | `True` only returns active contract accounts or points of delivery. `None` returns all.                                               |
+| `status` of `consents()`                             | A `ConsentsStatus` member, an iterable of members (e.g. a list) or `None`             | `REQUESTED`, `QR_CODE_SENT`, `ACTIVE`, `ACTIVE_UNCHANGEABLE`, `TIMEOUT`, `REVOKED`, `CONCLUDED`. `None` or an empty list returns all. |
+| `status` of `consent_requests()`                     | A `ConsentRequestsStatus` member, an iterable of members (e.g. a list) or `None`      | `INITIAL`, `SENT`, `CONFIRMED`, `REJECTED`, `TIMEOUT`. `None` or an empty list returns all.                                           |
+| `business_partner_number`, `contract_account_number` | `str`                                                                                 | Numbers from `dashboard()`.                                                                                                           |
+| `pods`                                               | `list[Pod]`                                                                           | Points of delivery and the time range to request, see [Consumption profile](#consumption-profile).                                    |
+| `dimension`                                          | `ConsumptionsDimension`                                                               | `ENERGY` (default), `POWER` or `VOLUME`.                                                                                              |
 
 All enums and their values are listed under [Constants](/constants).
 
@@ -115,8 +116,8 @@ profile: list[dict[str, Any]] = await client.consumptions_profile(
 
 All errors are subclasses of `APIError`, see [Errors](/errors):
 
-| Exception             | Raised when                                                                                       |
-|-----------------------|---------------------------------------------------------------------------------------------------|
-| `AuthenticationError` | The credentials were rejected (HTTP 401), also after a new login                                  |
-| `InvalidJsonError`    | The response is not valid JSON, e.g. the maintenance page ("Wartungsseite")                       |
-| `APIError`            | Any other HTTP or connection error. `status` holds the HTTP status, `detail` the original message |
+| Exception             | Raised when                                                                                                                                                                                                      |
+|-----------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `AuthenticationError` | The credentials were rejected (HTTP 401), also after a new login                                                                                                                                                 |
+| `InvalidJsonError`    | The response is not valid JSON, e.g. the maintenance page ("Wartungsseite")                                                                                                                                      |
+| `APIError`            | Any other HTTP or connection error, a `logout()` during the login, or a filter or `dimension` that is no member of its enum (e.g. a plain string). `status` holds the HTTP status, `detail` the original message |

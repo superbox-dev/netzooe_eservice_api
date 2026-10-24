@@ -9,6 +9,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!--start-->
 
+## [1.3.0] - 2026-10-24
+
+### Changed
+
+- Annotated the `branch` and `status` filters as `Iterable` instead of `list`, any iterable of members was already
+  accepted
+- Added a timeout of 30 seconds (`API_DEFAULT_TIMEOUT`) to all requests, also with a passed session. Before, a
+  request without an answer of the portal waited up to 5 minutes (the default of `aiohttp`)
+- Showed the documentation only in the dark theme with the colors of contributors.home-assistant.io, the brand logo
+  of the integration on the project card, a link to the website of the integration in the menu and a wider right
+  column on smaller screens
+- Focused the search of the documentation with `/` instead of `Ctrl`/`Cmd` + `K`, styled the search and the cards of
+  the category pages like contributors.home-assistant.io and made the header translucent
+
+### Fixed
+
+- Treated an empty list as `branch` or `status` filter like `None`, `dashboard_headers([])` and
+  `consumptions_profiles([])` raised an `APIError` with HTTP 404
+- Raised an `APIError` before any request for a filter, `dimension` or `Pod` value that is no member of its enum, e.g.
+  a plain string like `"STROM"` or a member of another enum, instead of an `AttributeError` or a request with a wrong
+  value, `Pod` values still accept strings
+- Cancelled a running login on `logout()`, so the login raises an `APIError` instead of a `RuntimeError` of aiohttp
+  and no longer sets a new XSRF token after the logout on a passed session
+- Raised an `APIError` instead of a `RuntimeError` of aiohttp for a passed session that was closed during the login
+- Sent no `branch` filter for both branches, the portal answered `dashboard_headers([ELECTRICITY, GAS])` and
+  `consumptions_profiles([ELECTRICITY, GAS])` with HTTP 404, and removed duplicate filter values
+
 ## [1.2.0] - 2026-10-18
 
 ### Added
@@ -143,7 +170,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added the exceptions `APIError` (with the HTTP `status`), `AuthenticationError` and `InvalidJsonError`
 - Supported Python 3.13 and 3.14
 
-[Unreleased]: https://github.com/superbox-dev/netzooe_eservice_api/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/superbox-dev/netzooe_eservice_api/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/superbox-dev/netzooe_eservice_api/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/superbox-dev/netzooe_eservice_api/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/superbox-dev/netzooe_eservice_api/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/superbox-dev/netzooe_eservice_api/compare/v1.0.2...v1.1.0

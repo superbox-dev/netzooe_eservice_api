@@ -3,12 +3,13 @@
 """Asynchronous client for the Netz OÖ eService API."""
 
 import asyncio
-from collections.abc import Sequence
+from collections.abc import Iterable
 from contextlib import suppress
 from enum import Enum
 from http import HTTPStatus
 from json.decoder import JSONDecodeError
 from typing import Any
+from typing import Final
 from typing import Literal
 from typing import NotRequired
 from typing import TypedDict
@@ -16,8 +17,10 @@ from urllib.parse import quote
 
 from aiohttp import ClientError
 from aiohttp import ClientSession
+from aiohttp import ClientTimeout
 from aiohttp import ContentTypeError
 
+from netzooe_eservice_api.constants import API_DEFAULT_TIMEOUT
 from netzooe_eservice_api.constants import COMMON_HEADERS
 from netzooe_eservice_api.constants import ESERVICE_PORTAL
 from netzooe_eservice_api.constants import ESERVICE_PORTAL_API
@@ -33,6 +36,8 @@ from netzooe_eservice_api.error import InvalidJsonError
 
 # Shapes of the JSON responses, `_request()` checks the response against the expected one.
 type _JSONResponse = dict[str, Any] | list[dict[str, Any]]
+
+_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=API_DEFAULT_TIMEOUT)
 
 
 class Pod(TypedDict):
@@ -60,8 +65,8 @@ class Pod(TypedDict):
 
     contract_account_number: str
     energy_community_id: NotRequired[str | None]
-    profile_type: ProfileType | str
-    best_available_granularity: Granularity | str
+    profile_type: str | ProfileType
+    best_available_granularity: str | Granularity
     meter_point_administration_number: str
     date_from: str
     date_to: str
@@ -112,23 +117,6 @@ class NetzOOEeServiceAPI:
         self.xsrf_token: str = ""
         self._login_task: asyncio.Task[None] | None = None
 
-    async def _get_session(self) -> ClientSession:
-        if self._session is None or self._session.closed:
-            # Also for a passed session that is already closed. The new session is owned by the client.
-            self._session = ClientSession()
-            self._custom_session = True
-            # The new session has none of the login cookies the token belongs to.
-            self.xsrf_token = ""
-
-        return self._session
-
-    async def _close_session(self) -> None:
-        # The token belongs to the closed session, the next request has to log in again.
-        self.xsrf_token = ""
-
-        if self._custom_session and self._session and not self._session.closed:
-            await self._session.close()
-
     @property
     def headers(self) -> dict[str, str]:
         """Headers for all API requests, including the current XSRF token."""
@@ -137,94 +125,6 @@ class NetzOOEeServiceAPI:
             "Content-Type": "application/json",
             "x-xsrf-token": self.xsrf_token,
         }
-
-    @staticmethod
-    def _query(**params: Sequence[Enum] | Enum | bool | None) -> str:
-        """Build a query string like ``?name=A,B&flag=true`` from the parameters that are not `None`, or ``""``."""
-        parts: list[str] = []
-
-        for name, value in params.items():
-            if value is None:
-                continue
-
-            if isinstance(value, bool):
-                parts.append(f"{name}={str(value).lower()}")
-            else:
-                values: Sequence[Enum] = [value] if isinstance(value, Enum) else value
-                parts.append(f"{name}={','.join(member.value for member in values)}")
-
-        return f"?{'&'.join(parts)}" if parts else ""
-
-    @staticmethod
-    def _enum_value(value: Enum | str, /) -> str:
-        """Return the value of an enum member, or the string itself."""
-        return value.value if isinstance(value, Enum) else value
-
-    @staticmethod
-    def _client_error(error: ClientError | TimeoutError, /) -> APIError:
-        """Map an aiohttp client error or a timeout to an `APIError`."""
-        return APIError(str(error) or type(error).__name__)
-
-    async def _request[T: _JSONResponse](
-        self,
-        method: Literal["GET", "POST"],
-        url: str,
-        response_type: type[T],
-        *,
-        json: dict[str, Any] | None = None,
-        retry: bool = True,
-    ) -> T:
-        try:
-            # Resets the token if the session has to be replaced, so the request logs in on the new session.
-            session: ClientSession = await self._get_session()
-
-            if not self.xsrf_token:
-                await self.login()
-
-            # The headers are read after the login, the portal rejects POST requests without a valid XSRF token.
-            used_token: str = self.xsrf_token
-
-            async with session.request(method, url, headers=self.headers, json=json) as resp:
-                if resp.status == HTTPStatus.OK:
-                    data: Any = None
-
-                    with suppress(JSONDecodeError, ContentTypeError, UnicodeDecodeError):
-                        data = await resp.json()
-
-                    # Not JSON, not the expected object or array, or e.g. an empty body, which aiohttp returns as None.
-                    if not isinstance(data, response_type):
-                        raise InvalidJsonError(await resp.text(errors="replace"), status=resp.status)
-
-                    return data
-                if resp.status != HTTPStatus.UNAUTHORIZED:
-                    raise APIError(await resp.text(errors="replace"), status=resp.status)
-
-            if not retry:
-                self.xsrf_token = ""
-                raise AuthenticationError(status=HTTPStatus.UNAUTHORIZED)
-
-            # Log in again after the 401 response is released, so it does not hold a connection of the session.
-            # Skip the login if another request already got a new token.
-            if self.xsrf_token == used_token:
-                await self.login()
-
-            return await self._request(method, url, response_type, json=json, retry=False)
-        except (ClientError, TimeoutError) as error:
-            # The session and its login stay valid, closing it would also abort concurrent requests.
-            raise self._client_error(error) from error
-
-    async def _get[T: _JSONResponse](self, url: str, response_type: type[T], /) -> T:
-        return await self._request("GET", url, response_type)
-
-    async def _post[T: _JSONResponse](
-        self,
-        url: str,
-        response_type: type[T],
-        /,
-        *,
-        json: dict[str, Any],
-    ) -> T:
-        return await self._request("POST", url, response_type, json=json)
 
     async def login(self) -> None:
         """Log in to the eService portal and get a new XSRF token.
@@ -244,8 +144,20 @@ class NetzOOEeServiceAPI:
         if self._login_task is None or self._login_task.done():
             self._login_task = asyncio.create_task(self._login())
 
-        # Shielded, so a cancelled caller does not cancel the login of the other callers.
-        await asyncio.shield(self._login_task)
+        login_task: asyncio.Task[None] = self._login_task
+
+        try:
+            # Shielded, so a cancelled caller does not cancel the login of the other callers.
+            await asyncio.shield(login_task)
+        except asyncio.CancelledError:
+            current_task: asyncio.Task[Any] | None = asyncio.current_task()
+
+            # Only `logout()` cancels the login task, a caller that is cancelled itself stays cancelled.
+            if not login_task.cancelled() or (current_task is not None and current_task.cancelling()):
+                raise
+
+            message: str = "Logged out during the login"
+            raise APIError(message) from None
 
     async def _login(self) -> None:
         session: ClientSession = await self._get_session()
@@ -255,16 +167,36 @@ class NetzOOEeServiceAPI:
         except (ClientError, TimeoutError) as error:
             await self._close_session()
             raise self._client_error(error) from error
+        except RuntimeError as error:
+            # aiohttp raises a RuntimeError if the session was closed during the login, e.g. a passed session.
+            # Any other RuntimeError is no connection error and is not hidden.
+            closed: bool = session.closed
+            await self._close_session()
+
+            if not closed:
+                raise
+
+            raise self._client_error(error) from error
         except APIError:
             await self._close_session()
             raise
+
+    async def _get_session(self) -> ClientSession:
+        if self._session is None or self._session.closed:
+            # Also for a passed session that is already closed. The new session is owned by the client.
+            self._session = ClientSession(timeout=_TIMEOUT)
+            self._custom_session = True
+            # The new session has none of the login cookies the token belongs to.
+            self.xsrf_token = ""
+
+        return self._session
 
     async def _authenticate(self, session: ClientSession, /) -> None:
         status: int = await self._post_credentials(session)
 
         # The portal answers 404 if the session is still logged in.
         if status == HTTPStatus.NOT_FOUND:
-            async with session.get(f"{ESERVICE_PORTAL}/service/logout", headers=COMMON_HEADERS):
+            async with session.get(f"{ESERVICE_PORTAL}/service/logout", headers=COMMON_HEADERS, timeout=_TIMEOUT):
                 pass
 
             status = await self._post_credentials(session)
@@ -274,7 +206,7 @@ class NetzOOEeServiceAPI:
         if status != HTTPStatus.OK:
             raise APIError(status=status)
 
-        async with session.get(f"{ESERVICE_PORTAL_API}/session", headers=COMMON_HEADERS) as resp:
+        async with session.get(f"{ESERVICE_PORTAL_API}/session", headers=COMMON_HEADERS, timeout=_TIMEOUT) as resp:
             if resp.status != HTTPStatus.OK:
                 raise APIError(await resp.text(errors="replace"), status=resp.status)
 
@@ -295,14 +227,27 @@ class NetzOOEeServiceAPI:
                 **COMMON_HEADERS,
                 "Content-Type": "application/json",
             },
+            timeout=_TIMEOUT,
         ) as resp:
             return resp.status
+
+    async def _close_session(self) -> None:
+        # The token belongs to the closed session, the next request has to log in again.
+        self.xsrf_token = ""
+
+        if self._custom_session and self._session and not self._session.closed:
+            await self._session.close()
+
+    @staticmethod
+    def _client_error(error: RuntimeError | TimeoutError | ClientError, /) -> APIError:
+        """Map an aiohttp client error, a timeout or a request on a closed session to an `APIError`."""
+        return APIError(str(error) or type(error).__name__)
 
     async def logout(self) -> None:
         """Log out from the eService portal and reset the XSRF token.
 
         If the client created its own session, the session is closed. The XSRF token is reset and the session
-        is closed even if the logout request fails.
+        is closed even if the logout request fails. A running login is cancelled and raises an `APIError`.
 
         Raises
         ------
@@ -311,8 +256,18 @@ class NetzOOEeServiceAPI:
 
         """
         try:
+            login_task: asyncio.Task[None] | None = self._login_task
+
+            # Otherwise the login would set a new token after the logout, e.g. on a passed session.
+            if login_task is not None and not login_task.done():
+                login_task.cancel()
+                # Waits for the cancelled login without raising its CancelledError.
+                await asyncio.wait([login_task])
+
             if self._session is not None and not self._session.closed:
-                async with self._session.get(f"{ESERVICE_PORTAL}/service/logout", headers=COMMON_HEADERS) as resp:
+                async with self._session.get(
+                    f"{ESERVICE_PORTAL}/service/logout", headers=COMMON_HEADERS, timeout=_TIMEOUT
+                ) as resp:
                     if not resp.ok:
                         raise APIError(await resp.text(errors="replace"), status=resp.status)
         except (ClientError, TimeoutError) as error:
@@ -345,9 +300,68 @@ class NetzOOEeServiceAPI:
         """
         return await self._get(f"{ESERVICE_PORTAL_API}/dashboard", dict)
 
+    async def _get[T: _JSONResponse](self, url: str, response_type: type[T], /) -> T:
+        return await self._request("GET", url, response_type)
+
+    async def _request[T: _JSONResponse](
+        self,
+        method: Literal["GET", "POST"],
+        url: str,
+        response_type: type[T],
+        *,
+        json: dict[str, Any] | None = None,
+        retry: bool = True,
+    ) -> T:
+        # Resets the token if the session has to be replaced, so the request logs in on the new session.
+        session: ClientSession = await self._get_session()
+
+        # The login maps its own errors, the try below only covers the request itself.
+        if not self.xsrf_token:
+            await self.login()
+
+        # The headers are read after the login, the portal rejects POST requests without a valid XSRF token.
+        used_token: str = self.xsrf_token
+
+        try:
+            async with session.request(method, url, headers=self.headers, json=json, timeout=_TIMEOUT) as resp:
+                if resp.status == HTTPStatus.OK:
+                    data: Any = None
+
+                    with suppress(JSONDecodeError, ContentTypeError, UnicodeDecodeError):
+                        data = await resp.json()
+
+                    # Not JSON, not the expected object or array, or e.g. an empty body, which aiohttp returns as None.
+                    if not isinstance(data, response_type):
+                        raise InvalidJsonError(await resp.text(errors="replace"), status=resp.status)
+
+                    return data
+                if resp.status != HTTPStatus.UNAUTHORIZED:
+                    raise APIError(await resp.text(errors="replace"), status=resp.status)
+        except (ClientError, TimeoutError) as error:
+            # The session and its login stay valid, closing it would also abort concurrent requests.
+            raise self._client_error(error) from error
+        except RuntimeError as error:
+            # aiohttp raises a RuntimeError for a request on a closed session, e.g. after a `logout()` meanwhile.
+            # Any other RuntimeError is no connection error and is not hidden.
+            if not session.closed:
+                raise
+
+            raise self._client_error(error) from error
+
+        if not retry:
+            self.xsrf_token = ""
+            raise AuthenticationError(status=HTTPStatus.UNAUTHORIZED)
+
+        # Log in again after the 401 response is released, so it does not hold a connection of the session.
+        # Skip the login if another request already got a new token.
+        if self.xsrf_token == used_token:
+            await self.login()
+
+        return await self._request(method, url, response_type, json=json, retry=False)
+
     async def dashboard_headers(
         self,
-        branch: list[ConsumptionsProfilesBranch] | ConsumptionsProfilesBranch | None = None,
+        branch: ConsumptionsProfilesBranch | Iterable[ConsumptionsProfilesBranch] | None = None,
         *,
         active_only: bool | None = None,
     ) -> list[dict[str, Any]]:
@@ -356,7 +370,8 @@ class NetzOOEeServiceAPI:
         Parameters
         ----------
         branch
-            Only return contract accounts of this branch or these branches. Returns all contract accounts if `None`.
+            Only return contract accounts of this branch or these branches. Returns all contract accounts if `None`,
+            empty or both branches.
         active_only
             Only return active (`True`) contract accounts. Returns all contract accounts if `None`.
 
@@ -372,7 +387,7 @@ class NetzOOEeServiceAPI:
         InvalidJsonError
             The response is not valid JSON, e.g. the maintenance page ("Wartungsseite").
         APIError
-            Any other HTTP or connection error.
+            Any other HTTP or connection error, or a filter value that is no member of the filter's enum.
 
         Examples
         --------
@@ -380,18 +395,89 @@ class NetzOOEeServiceAPI:
         >>> headers[0]["contracts"][0]["meterPointAdministrationNumber"]
 
         """
-        return await self._get(
-            f"{ESERVICE_PORTAL_API}/dashboard/headers{self._query(branch=branch, activeOnly=active_only)}",
-            list,
+        query: str = self._query(
+            "branch",
+            branch,
+            ConsumptionsProfilesBranch,
+            active_only=active_only,
+            # The portal answers ``?branch=STROM,GAS`` with 404, both branches are all.
+            all_is_no_filter=True,
         )
+        return await self._get(f"{ESERVICE_PORTAL_API}/dashboard/headers{query}", list)
 
-    async def consents(self, status: list[ConsentsStatus] | ConsentsStatus | None = None, /) -> list[dict[str, Any]]:
+    @classmethod
+    def _query(
+        cls,
+        name: str,
+        value: object,
+        enum_type: type[Enum],
+        /,
+        *,
+        active_only: object = None,
+        all_is_no_filter: bool = False,
+    ) -> str:
+        """Build a query string like ``?name=A,B&activeOnly=true`` from the filters that are not `None`, or ``""``.
+
+        `value` is a member of `enum_type` or an iterable of members, an empty one is no filter like `None`, the
+        portal answers e.g. ``?branch=`` with 404. Any other value, or an `active_only` that is no bool, raises an
+        `APIError`. With `all_is_no_filter`, all members are no filter either, for filters that the portal only
+        takes with one value.
+        """
+        parts: list[str] = []
+
+        if value is not None:
+            # A string is iterable too, but of characters, not of members.
+            values: Iterable[object] = (
+                value if isinstance(value, Iterable) and not isinstance(value, (Enum, str)) else [value]
+            )
+
+            # Without duplicates, e.g. a list with the same member twice.
+            unique: list[str] = list(dict.fromkeys(cls._enum_value(name, member, enum_type) for member in values))
+
+            if all_is_no_filter and len(unique) == len(enum_type):
+                unique = []
+
+            if unique:
+                parts.append(f"{name}={','.join(unique)}")
+
+        if active_only is not None:
+            flag: str = "activeOnly"
+
+            if not isinstance(active_only, bool):
+                raise cls._invalid_value(flag, active_only)
+
+            parts.append(f"{flag}={str(active_only).lower()}")
+
+        return f"?{'&'.join(parts)}" if parts else ""
+
+    @classmethod
+    def _enum_value(cls, name: str, value: object, enum_type: type[Enum], /, *, allow_str: bool = False) -> str:
+        """Return the value of a member of `enum_type`, or with `allow_str` a string itself.
+
+        Any other value, also a member of another enum, raises an `APIError`.
+        """
+        if isinstance(value, enum_type):
+            return value.value
+        if allow_str and isinstance(value, str):
+            return value
+
+        raise cls._invalid_value(name, value)
+
+    @staticmethod
+    def _invalid_value(name: str, value: object, /) -> APIError:
+        """Return the `APIError` for an invalid value of the parameter `name`."""
+        return APIError(f"Invalid value for {name}: {value!r}")
+
+    async def consents(
+        self, status: ConsentsStatus | Iterable[ConsentsStatus] | None = None, /
+    ) -> list[dict[str, Any]]:
         """Get the data sharing consents.
 
         Parameters
         ----------
         status
-            Only return consents with this status or one of these statuses. Returns all consents if `None`.
+            Only return consents with this status or one of these statuses. Returns all consents if `None` or
+            empty.
 
         Returns
         -------
@@ -405,18 +491,18 @@ class NetzOOEeServiceAPI:
         InvalidJsonError
             The response is not valid JSON, e.g. the maintenance page ("Wartungsseite").
         APIError
-            Any other HTTP or connection error.
+            Any other HTTP or connection error, or a filter value that is no member of the filter's enum.
 
         Examples
         --------
         >>> await client.consents([ConsentsStatus.ACTIVE, ConsentsStatus.ACTIVE_UNCHANGEABLE])
 
         """
-        return await self._get(f"{ESERVICE_PORTAL_API}/consents{self._query(status=status)}", list)
+        return await self._get(f"{ESERVICE_PORTAL_API}/consents{self._query('status', status, ConsentsStatus)}", list)
 
     async def consent_requests(
         self,
-        status: list[ConsentRequestsStatus] | ConsentRequestsStatus | None = None,
+        status: ConsentRequestsStatus | Iterable[ConsentRequestsStatus] | None = None,
         /,
     ) -> list[dict[str, Any]]:
         """Get the data sharing consent requests, e.g. of energy communities.
@@ -425,7 +511,7 @@ class NetzOOEeServiceAPI:
         ----------
         status
             Only return consent requests with this status or one of these statuses. Returns all consent requests
-            if `None`.
+            if `None` or empty.
 
         Returns
         -------
@@ -439,18 +525,20 @@ class NetzOOEeServiceAPI:
         InvalidJsonError
             The response is not valid JSON, e.g. the maintenance page ("Wartungsseite").
         APIError
-            Any other HTTP or connection error.
+            Any other HTTP or connection error, or a filter value that is no member of the filter's enum.
 
         Examples
         --------
         >>> await client.consent_requests(ConsentRequestsStatus.CONFIRMED)
 
         """
-        return await self._get(f"{ESERVICE_PORTAL_API}/consent-requests{self._query(status=status)}", list)
+        return await self._get(
+            f"{ESERVICE_PORTAL_API}/consent-requests{self._query('status', status, ConsentRequestsStatus)}", list
+        )
 
     async def consumptions_profiles(
         self,
-        branch: list[ConsumptionsProfilesBranch] | ConsumptionsProfilesBranch | None = None,
+        branch: ConsumptionsProfilesBranch | Iterable[ConsumptionsProfilesBranch] | None = None,
         *,
         active_only: bool | None = None,
     ) -> list[dict[str, Any]]:
@@ -459,7 +547,8 @@ class NetzOOEeServiceAPI:
         Parameters
         ----------
         branch
-            Only return profiles of this branch or these branches. Returns all profiles if `None`.
+            Only return profiles of this branch or these branches. Returns all profiles if `None`, empty or both
+            branches.
         active_only
             Only return profiles of active (`True`) points of delivery. Returns all profiles if `None`.
 
@@ -475,17 +564,22 @@ class NetzOOEeServiceAPI:
         InvalidJsonError
             The response is not valid JSON, e.g. the maintenance page ("Wartungsseite").
         APIError
-            Any other HTTP or connection error.
+            Any other HTTP or connection error, or a filter value that is no member of the filter's enum.
 
         Examples
         --------
         >>> await client.consumptions_profiles(ConsumptionsProfilesBranch.ELECTRICITY, active_only=True)
 
         """
-        return await self._get(
-            f"{ESERVICE_PORTAL_API}/consumptions/profiles{self._query(branch=branch, activeOnly=active_only)}",
-            list,
+        query: str = self._query(
+            "branch",
+            branch,
+            ConsumptionsProfilesBranch,
+            active_only=active_only,
+            # The portal answers ``?branch=STROM,GAS`` with 404, both branches are all.
+            all_is_no_filter=True,
         )
+        return await self._get(f"{ESERVICE_PORTAL_API}/consumptions/profiles{query}", list)
 
     async def contract_accounts(self, business_partner_number: str, contract_account_number: str) -> dict[str, Any]:
         """Get the data of a contract account.
@@ -551,7 +645,8 @@ class NetzOOEeServiceAPI:
         InvalidJsonError
             The response is not valid JSON, e.g. the maintenance page ("Wartungsseite").
         APIError
-            Any other HTTP or connection error.
+            Any other HTTP or connection error, a `dimension` that is no `ConsumptionsDimension` member, or a
+            `Pod` value that is neither a member of its enum nor a string.
 
         Examples
         --------
@@ -582,8 +677,13 @@ class NetzOOEeServiceAPI:
                             if pod.get("energy_community_id") is not None
                             else {}
                         ),
-                        "type": self._enum_value(pod["profile_type"]),
-                        "bestAvailableGranularity": self._enum_value(pod["best_available_granularity"]),
+                        "type": self._enum_value("profile_type", pod["profile_type"], ProfileType, allow_str=True),
+                        "bestAvailableGranularity": self._enum_value(
+                            "best_available_granularity",
+                            pod["best_available_granularity"],
+                            Granularity,
+                            allow_str=True,
+                        ),
                         "meterPointAdministrationNumber": pod["meter_point_administration_number"],
                         "timerange": {
                             "from": pod["date_from"],
@@ -592,6 +692,16 @@ class NetzOOEeServiceAPI:
                     }
                     for pod in pods
                 ],
-                "dimension": dimension.value,
+                "dimension": self._enum_value("dimension", dimension, ConsumptionsDimension),
             },
         )
+
+    async def _post[T: _JSONResponse](
+        self,
+        url: str,
+        response_type: type[T],
+        /,
+        *,
+        json: dict[str, Any],
+    ) -> T:
+        return await self._request("POST", url, response_type, json=json)
