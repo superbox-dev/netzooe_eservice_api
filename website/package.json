@@ -46,6 +46,15 @@
     ]
   },
   "engines": {
-    "node": ">=20.0"
+    "node": ">=24.0"
+  },
+  "overrides": {
+    "serialize-javascript": "^7.1.4",
+    "tinypool": "^2.2.0"
+  },
+  "allowScripts": {
+    "core-js": false,
+    "@swc/core": false,
+    "fsevents": false
   }
 }
