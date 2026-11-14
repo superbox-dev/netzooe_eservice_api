@@ -3,6 +3,7 @@
 """Tests for the Netz OÖ eService API client."""
 
 import asyncio
+import contextlib
 import gc
 import warnings
 from collections.abc import Awaitable
@@ -37,6 +38,7 @@ from tests.test_api_data import MOCK_DASHBOARD_URL
 from tests.test_api_data import MOCK_LOGIN_URL
 from tests.test_api_data import MOCK_LOGOUT_URL
 from tests.test_api_data import MOCK_NEW_XSRF
+from tests.test_api_data import MOCK_OTHER_URL
 from tests.test_api_data import MOCK_OUTSIDE_XSRF
 from tests.test_api_data import MOCK_POD
 from tests.test_api_data import MOCK_PROFILE_URL
@@ -291,6 +293,30 @@ async def test_login_without_xsrf_cookie(headers: dict[str, str]) -> None:
         assert client.xsrf_token == ""
 
     assert await count_unclosed_sessions(scenario) == 0
+
+
+@pytest.mark.parametrize(
+    ("method", "url"),
+    [("post", MOCK_LOGIN_URL), ("get", MOCK_SESSION_URL)],
+    ids=["login_request", "session_request"],
+)
+async def test_login_redirect_not_followed(method: str, url: str) -> None:
+    """Test a redirect of the login is raised as an API error and its target gets no request."""
+    with aioresponses() as mock_api:
+        getattr(mock_api, method)(url, status=307, headers={"Location": MOCK_OTHER_URL})
+        mock_login(mock_api)
+        mock_api.post(MOCK_OTHER_URL, status=200)
+        mock_api.get(MOCK_OTHER_URL, status=200, headers={"Set-Cookie": f"XSRF-TOKEN={MOCK_OUTSIDE_XSRF}; Path=/"})
+
+        client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(username=MOCK_USERNAME, password=MOCK_CREDENTIAL)
+
+        with pytest.raises(APIError) as error:
+            await client.login()
+
+        assert type(error.value) is APIError
+        assert error.value.status == HTTPStatus.TEMPORARY_REDIRECT
+        assert client.xsrf_token == ""
+        assert recorded_calls(mock_api, MOCK_OTHER_URL) == []
 
 
 async def test_login_after_failed_login() -> None:
@@ -713,6 +739,32 @@ async def test_logout_during_request() -> None:
         await client.logout()
 
 
+@pytest.mark.parametrize("logout_status", [200, 500], ids=["logout", "logout_failed"])
+async def test_logout_clears_cookies_of_passed_session(logout_status: int) -> None:
+    """Test the cookies of the portal are removed from a passed session on logout, also if the logout fails."""
+    with aioresponses() as mock_api:
+        mock_login(mock_api)
+        mock_api.get(MOCK_LOGOUT_URL, status=logout_status)
+
+        async with ClientSession() as session:
+            client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(
+                username=MOCK_USERNAME,
+                password=MOCK_CREDENTIAL,
+                session=session,
+            )
+            await client.login()
+
+            session.cookie_jar.update_cookies({"JSESSIONID": "mocked-session"}, URL(MOCK_API_URL))
+            session.cookie_jar.update_cookies({"other": "mocked-cookie"}, URL(MOCK_OTHER_URL))
+
+            # Only the failed logout raises.
+            with contextlib.suppress(APIError):
+                await client.logout()
+
+            assert len(session.cookie_jar.filter_cookies(URL(MOCK_API_URL))) == 0
+            assert set(session.cookie_jar.filter_cookies(URL(MOCK_OTHER_URL))) == {"other"}
+
+
 async def test_logout_keeps_passed_session() -> None:
     """Test a passed session is not closed on logout."""
     with aioresponses() as mock_api:
@@ -993,6 +1045,47 @@ async def test_request_client_error() -> None:
             await client.dashboard()
 
         assert str(error.value) == "mocked error"
+
+        await client.logout()
+
+
+async def test_request_client_response_error_without_url() -> None:
+    """Test a response error of aiohttp is raised as an API error without the URL, which contains customer numbers."""
+    with aioresponses() as mock_api:
+        mock_login(mock_api)
+        mock_api.get(MOCK_LOGOUT_URL, status=200)
+        mock_api.get(f"{MOCK_API_URL}/contract-accounts/123/345", status=500, reason="Mocked Reason")
+
+        async with ClientSession(raise_for_status=True) as session:
+            client: NetzOOEeServiceAPI = NetzOOEeServiceAPI(
+                username=MOCK_USERNAME,
+                password=MOCK_CREDENTIAL,
+                session=session,
+            )
+
+            with pytest.raises(APIError) as error:
+                await client.contract_accounts(business_partner_number="123", contract_account_number="345")
+
+            assert type(error.value) is APIError
+            assert str(error.value) == "ClientResponseError: 500 Mocked Reason"
+
+            await client.logout()
+
+
+async def test_request_redirect_not_followed() -> None:
+    """Test a redirect of a request is raised as an API error and its target gets no request with the XSRF token."""
+    with aioresponses() as mock_api:
+        client: NetzOOEeServiceAPI = await create_logged_in_client(mock_api)
+
+        mock_api.get(MOCK_DASHBOARD_URL, status=307, headers={"Location": MOCK_OTHER_URL})
+        mock_api.get(MOCK_OTHER_URL, status=200, payload={})
+
+        with pytest.raises(APIError) as error:
+            await client.dashboard()
+
+        assert type(error.value) is APIError
+        assert error.value.status == HTTPStatus.TEMPORARY_REDIRECT
+        assert recorded_calls(mock_api, MOCK_OTHER_URL) == []
 
         await client.logout()
 

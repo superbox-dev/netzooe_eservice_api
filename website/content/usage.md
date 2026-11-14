@@ -53,6 +53,10 @@ A passed `aiohttp` `ClientSession` is never closed by the client. Without a pass
 own and closes it on `logout()` and if a login fails. Every request times out after 30 seconds (`API_DEFAULT_TIMEOUT`),
 also with a passed session.
 
+The cookies of the portal are removed from a passed session on `logout()` and if a login fails, so the login does not
+stay in a session that is shared with other code. Redirects are never followed, a redirect of the portal raises an
+`APIError` with its HTTP status.
+
 | Method     | Portal endpoint                                                    | Description                                                                                                                                                             |
 |------------|--------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `login()`  | `POST /service/j_security_check`, then `GET /service/v1.0/session` | Logs in and gets a new XSRF token. Optional, the client logs in automatically.                                                                                          |
@@ -121,3 +125,6 @@ All errors are subclasses of `APIError`, see [Errors](/errors):
 | `AuthenticationError` | The credentials were rejected (HTTP 401), also after a new login                                                                                                                                                 |
 | `InvalidJsonError`    | The response is not valid JSON, e.g. the maintenance page ("Wartungsseite")                                                                                                                                      |
 | `APIError`            | Any other HTTP or connection error, a `logout()` during the login, or a filter or `dimension` that is no member of its enum (e.g. a plain string). `status` holds the HTTP status, `detail` the original message |
+
+The message of an error (`str(error)`) contains no credentials or tokens. `detail` holds the raw response body of
+the portal, which may contain customer data, do not log it.
