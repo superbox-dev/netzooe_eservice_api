@@ -16,6 +16,7 @@ from typing import TypedDict
 from urllib.parse import quote
 
 from aiohttp import ClientError
+from aiohttp import ClientResponseError
 from aiohttp import ClientSession
 from aiohttp import ClientTimeout
 from aiohttp import ContentTypeError
@@ -38,6 +39,8 @@ from netzooe_eservice_api.error import InvalidJsonError
 type _JSONResponse = dict[str, Any] | list[dict[str, Any]]
 
 _TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=API_DEFAULT_TIMEOUT)
+# Host of the portal, its cookies are removed from a passed session on logout.
+_PORTAL_HOST: Final[str] = ESERVICE_PORTAL.removeprefix("https://")
 
 
 class Pod(TypedDict):
@@ -196,7 +199,9 @@ class NetzOOEeServiceAPI:
 
         # The portal answers 404 if the session is still logged in.
         if status == HTTPStatus.NOT_FOUND:
-            async with session.get(f"{ESERVICE_PORTAL}/service/logout", headers=COMMON_HEADERS, timeout=_TIMEOUT):
+            async with session.get(
+                f"{ESERVICE_PORTAL}/service/logout", headers=COMMON_HEADERS, timeout=_TIMEOUT, allow_redirects=False
+            ):
                 pass
 
             status = await self._post_credentials(session)
@@ -206,7 +211,9 @@ class NetzOOEeServiceAPI:
         if status != HTTPStatus.OK:
             raise APIError(status=status)
 
-        async with session.get(f"{ESERVICE_PORTAL_API}/session", headers=COMMON_HEADERS, timeout=_TIMEOUT) as resp:
+        async with session.get(
+            f"{ESERVICE_PORTAL_API}/session", headers=COMMON_HEADERS, timeout=_TIMEOUT, allow_redirects=False
+        ) as resp:
             if resp.status != HTTPStatus.OK:
                 raise APIError(await resp.text(errors="replace"), status=resp.status)
 
@@ -228,6 +235,8 @@ class NetzOOEeServiceAPI:
                 "Content-Type": "application/json",
             },
             timeout=_TIMEOUT,
+            # The portal never redirects, a redirect would send the credentials to its target.
+            allow_redirects=False,
         ) as resp:
             return resp.status
 
@@ -235,12 +244,22 @@ class NetzOOEeServiceAPI:
         # The token belongs to the closed session, the next request has to log in again.
         self.xsrf_token = ""
 
-        if self._custom_session and self._session and not self._session.closed:
+        if self._session is None or self._session.closed:
+            return
+
+        if self._custom_session:
             await self._session.close()
+        else:
+            # A passed session stays open and may be shared, the login cookies of the portal must not stay in it.
+            self._session.cookie_jar.clear_domain(_PORTAL_HOST)
 
     @staticmethod
     def _client_error(error: RuntimeError | TimeoutError | ClientError, /) -> APIError:
         """Map an aiohttp client error, a timeout or a request on a closed session to an `APIError`."""
+        if isinstance(error, ClientResponseError):
+            # Its string contains the URL, which may contain the numbers of the customer.
+            return APIError(f"{type(error).__name__}: {error.status} {error.message}".rstrip())
+
         return APIError(str(error) or type(error).__name__)
 
     async def logout(self) -> None:
@@ -266,7 +285,10 @@ class NetzOOEeServiceAPI:
 
             if self._session is not None and not self._session.closed:
                 async with self._session.get(
-                    f"{ESERVICE_PORTAL}/service/logout", headers=COMMON_HEADERS, timeout=_TIMEOUT
+                    f"{ESERVICE_PORTAL}/service/logout",
+                    headers=COMMON_HEADERS,
+                    timeout=_TIMEOUT,
+                    allow_redirects=False,
                 ) as resp:
                     if not resp.ok:
                         raise APIError(await resp.text(errors="replace"), status=resp.status)
@@ -323,7 +345,10 @@ class NetzOOEeServiceAPI:
         used_token: str = self.xsrf_token
 
         try:
-            async with session.request(method, url, headers=self.headers, json=json, timeout=_TIMEOUT) as resp:
+            # The portal never redirects, a redirect would send the XSRF token to its target.
+            async with session.request(
+                method, url, headers=self.headers, json=json, timeout=_TIMEOUT, allow_redirects=False
+            ) as resp:
                 if resp.status == HTTPStatus.OK:
                     data: Any = None
 

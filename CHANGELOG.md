@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!--start-->
 
+## [1.3.1] - 2026-11-14
+
+### Security
+
+- Removed the URL, which contains the business partner and contract account number, from the message of an `APIError`
+  for a `ClientResponseError` of `aiohttp`, e.g. with a passed session that uses `raise_for_status`
+- Stopped following redirects, a redirect of the portal is raised as an `APIError` with its HTTP status instead of
+  sending the credentials or the XSRF token to its target
+- Removed the cookies of the portal from a passed session on `logout()` and if a login fails, also if the logout
+  request fails
+- Added a `SECURITY.md` that describes how to report a vulnerability
+
 ## [1.3.0] - 2026-10-24
 
 ### Changed
@@ -170,7 +182,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added the exceptions `APIError` (with the HTTP `status`), `AuthenticationError` and `InvalidJsonError`
 - Supported Python 3.13 and 3.14
 
-[Unreleased]: https://github.com/superbox-dev/netzooe_eservice_api/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/superbox-dev/netzooe_eservice_api/compare/v1.3.1...HEAD
+[1.3.1]: https://github.com/superbox-dev/netzooe_eservice_api/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/superbox-dev/netzooe_eservice_api/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/superbox-dev/netzooe_eservice_api/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/superbox-dev/netzooe_eservice_api/compare/v1.1.0...v1.1.1

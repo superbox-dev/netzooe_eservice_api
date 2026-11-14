@@ -63,6 +63,9 @@ Before finishing a change, run `ruff format`, `lint.sh` and `pytest`, in this or
 - No inline lint/type suppressions, no new ones in the config, no `# pragma: no cover`, fix or test the code
 - New public names are exported in the package `__init__.py` (`__all__`)
 - No real credentials or customer data, use placeholders like `"test"`
+- Test account: login in `.env` (`NETZOOE_USER`, `NETZOOE_PASS`, git-ignored)
+  - **only** read-only requests (besides login/logout), few requests, certificate check on
+  - never print, log or commit its values, never copy them into code, tests or docs
 - No new dependencies (`pyproject.toml`, also dev dependencies) without asking first
 - `git add` new files, the pre-commit hooks only check tracked files
 - Never edit generated or CI-managed files (`version.py`, `coverage-badge.svg`)
