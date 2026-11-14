@@ -22,6 +22,8 @@ MOCK_LOGOUT_URL: Final[str] = "https://eservice.netzooe.at/service/logout"
 MOCK_DASHBOARD_URL: Final[str] = "https://eservice.netzooe.at/service/v1.0/dashboard"
 MOCK_PROFILE_URL: Final[str] = "https://eservice.netzooe.at/service/v1.0/consumptions/profile/active"
 MOCK_API_URL: Final[str] = "https://eservice.netzooe.at/service/v1.0"
+# Target of a mocked redirect on another host.
+MOCK_OTHER_URL: Final[str] = "https://other.invalid/target"
 
 MOCK_POD: Final[Pod] = Pod(
     contract_account_number="123",
