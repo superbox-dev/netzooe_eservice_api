@@ -9,7 +9,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -27,7 +27,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'Content-Type': 'application/json',
@@ -48,7 +48,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -66,7 +66,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'data': None,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
@@ -94,7 +94,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -112,7 +112,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'Content-Type': 'application/json',
@@ -133,7 +133,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -151,7 +151,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'data': None,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
@@ -179,7 +179,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -197,7 +197,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'Content-Type': 'application/json',
@@ -218,7 +218,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -236,7 +236,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'data': None,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
@@ -264,7 +264,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -282,7 +282,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'Content-Type': 'application/json',
@@ -303,7 +303,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -321,7 +321,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'data': None,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
@@ -349,7 +349,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -367,7 +367,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'Content-Type': 'application/json',
@@ -388,7 +388,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -406,7 +406,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'data': None,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
@@ -434,7 +434,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -452,7 +452,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'Content-Type': 'application/json',
@@ -473,7 +473,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -491,7 +491,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'data': None,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
@@ -519,7 +519,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -537,7 +537,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -555,7 +555,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'data': None,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
@@ -579,7 +579,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'data': None,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
@@ -620,7 +620,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -638,7 +638,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -656,7 +656,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'data': None,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
@@ -680,7 +680,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'data': None,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
@@ -720,7 +720,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -738,7 +738,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -756,7 +756,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'data': None,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
@@ -780,7 +780,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'data': None,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
@@ -831,7 +831,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -849,7 +849,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -867,7 +867,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'data': None,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
@@ -891,7 +891,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'data': None,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
@@ -931,7 +931,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -949,7 +949,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'Content-Type': 'application/json',
@@ -970,7 +970,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -988,7 +988,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'data': None,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
@@ -1016,7 +1016,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -1034,7 +1034,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'Content-Type': 'application/json',
@@ -1055,7 +1055,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -1073,7 +1073,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'data': None,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
@@ -1101,7 +1101,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -1119,7 +1119,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'Content-Type': 'application/json',
@@ -1140,7 +1140,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -1158,7 +1158,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'data': None,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
@@ -1186,7 +1186,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -1204,7 +1204,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'Content-Type': 'application/json',
@@ -1225,7 +1225,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -1243,7 +1243,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'data': None,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
@@ -1271,7 +1271,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -1289,7 +1289,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'Content-Type': 'application/json',
@@ -1310,7 +1310,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -1328,7 +1328,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'data': None,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
@@ -1356,7 +1356,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -1374,7 +1374,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'Content-Type': 'application/json',
@@ -1395,7 +1395,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -1413,7 +1413,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'data': None,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
@@ -1441,7 +1441,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -1459,7 +1459,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'Content-Type': 'application/json',
@@ -1480,7 +1480,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -1498,7 +1498,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'data': None,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
@@ -1526,7 +1526,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -1544,7 +1544,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'Content-Type': 'application/json',
@@ -1565,7 +1565,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -1583,7 +1583,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'data': None,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
@@ -1611,7 +1611,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -1629,7 +1629,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -1647,7 +1647,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'data': None,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
@@ -1675,7 +1675,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'data': None,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
@@ -1703,7 +1703,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'data': None,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
@@ -1731,7 +1731,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -1749,7 +1749,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'data': None,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
@@ -1777,7 +1777,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -1790,7 +1790,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -1808,7 +1808,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -1821,7 +1821,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -1839,7 +1839,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'data': None,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
@@ -1858,7 +1858,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'data': None,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
@@ -1877,7 +1877,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'data': None,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
@@ -1905,7 +1905,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -1923,7 +1923,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'Content-Type': 'application/json',
@@ -1944,7 +1944,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -1962,7 +1962,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'data': None,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
@@ -1990,7 +1990,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -2008,7 +2008,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'Content-Type': 'application/json',
@@ -2024,7 +2024,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'Content-Type': 'application/json',
@@ -2045,7 +2045,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -2058,7 +2058,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
             'User-Agent': 'Mozilla/5.0',
@@ -2076,7 +2076,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'data': None,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
@@ -2095,7 +2095,7 @@
         args=tuple(
         ),
         kwargs=dict({
-          'allow_redirects': True,
+          'allow_redirects': False,
           'data': None,
           'headers': dict({
             'Accept': 'application/json, text/plain, */*',
