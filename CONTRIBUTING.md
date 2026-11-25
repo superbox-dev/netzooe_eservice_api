@@ -13,58 +13,35 @@ Contributing to this project should be as easy and transparent as possible, whet
 
 ## Getting started
 
-Set up the project with `./scripts/setup.sh`.
+The project uses [uv](https://docs.astral.sh/uv/).
 
-## GitHub is used for everything
+Set up the project with `./scripts/setup.sh`. This installs the dependencies, the [prek](https://prek.j178.dev) hooks
+and a git `pre-push` hook that validates release tags.
 
-GitHub is used to host code, to track issues and feature requests, as well as accept pull requests.
+## Pull requests
 
 Pull requests are the best way to propose changes to the codebase.
 
-1. Fork the repo and create your branch from `develop`
-2. If you've changed something, update the documentation.
-3. Add an entry under `## [Unreleased]` in `CHANGELOG.md` for every user-visible change.
-4. Make sure your code lints with `./scripts/lint.sh`.
-5. Test your contribution. 100% test coverage is required.
-6. Issue that pull request!
+1. Fork the repository and create your branch from `develop`. `main` is the release branch.
+2. Update the documentation in `website/content/` if you changed something user-visible.
+3. Add an entry under `## [Unreleased]` in [CHANGELOG.md](CHANGELOG.md).
+4. Make sure `./scripts/lint.sh` and `uv run pytest` pass.
+5. Open the pull request against `develop`.
 
-## Report bugs using Github's [issues](https://github.com/superbox-dev/netzooe_eservice_api/issues)
+Never use real credentials or customer data (contract account numbers, meter point numbers, ...) in code, tests or
+issues.
 
-GitHub issues are used to track public bugs.
-Report a bug by [opening a new issue](https://github.com/superbox-dev/netzooe_eservice_api/issues/new/choose);
-it's that easy!
+## Coding style
 
-## Write bug reports with detail, background, and sample code
-
-**Great Bug Reports** tend to have:
-
-- A quick summary and/or background
-- Steps to reproduce
-  - Be specific!
-  - Give sample code if you can
-- What you expected would happen
-- What actually happens
-- Notes (possibly including why you think this might be happening, or stuff you tried that didn't work)
-
-People *love* thorough bug reports. I'm not even kidding.
-
-## Use a Consistent Coding Style
-
-Use [ruff](https://docs.astral.sh/ruff/) for formatting and linting and [ty](https://docs.astral.sh/ty/)
-for type checking. Run all linters at once with:
-
-```bash
-./scripts/lint.sh
-```
-
-See [CLAUDE.md](CLAUDE.md) for the project rules.
+`./scripts/lint.sh` runs [ruff](https://docs.astral.sh/ruff/) (format and lint), [ty](https://docs.astral.sh/ty/),
+yamllint and [rumdl](https://github.com/rvben/rumdl). See [CLAUDE.md](CLAUDE.md) for the project rules.
 
 ## AI assistant
 
 The project only uses [Claude Code](https://claude.com/claude-code) as AI assistant. Its rules are in
 [CLAUDE.md](CLAUDE.md), `tests/CLAUDE.md`, `website/CLAUDE.md` and the skills in `.claude/skills/`.
 
-## Build the documentation
+## Documentation
 
 The documentation is a [Docusaurus](https://docusaurus.io) website in `website/` and needs Node.js.
 The API reference is generated from the docstrings:
@@ -74,9 +51,9 @@ The API reference is generated from the docstrings:
 ./scripts/docs.sh start  # live reload
 ```
 
-## Test your code modification
+## Tests
 
-To test the code we use [pytest](https://docs.pytest.org):
+Tests use [pytest](https://docs.pytest.org). **100% test coverage is enforced**, so every new code path needs a test.
 
 ```bash
 uv run pytest
@@ -88,9 +65,37 @@ If a test changes the recorded requests, regenerate the snapshots and review the
 uv run pytest -n0 --snapshot-update
 ```
 
+## Releases
+
+Only maintainers create releases. Tags cannot be deleted, so a release must be correct before the tag is pushed.
+The version comes from the tag ([setuptools-scm](https://setuptools-scm.readthedocs.io)), don't set it in a file.
+
+1. Rename `## [Unreleased]` in [CHANGELOG.md](CHANGELOG.md) to `## [X.Y.Z] - YYYY-MM-DD` and add a new empty
+   `## [Unreleased]` section above it. Pre-releases don't need a changelog section.
+2. Merge the changes into `main`. Pre-releases are tagged on `develop` instead.
+3. Run `./scripts/release.sh vX.Y.Z` from `main`, or `./scripts/release.sh vX.Y.ZbN` from `develop`.
+
+`./scripts/release.sh` creates and pushes the tag only if `./scripts/check-release.sh` passes. The check verifies the
+tag format and that stable releases have a changelog entry. The same check runs again in the release workflow before
+anything is published on PyPI.
+
+Don't create tags manually and don't use `git push --no-verify` for tags.
+
+## Report bugs
+
+Report a bug by [opening a new issue](https://github.com/superbox-dev/netzooe_eservice_api/issues/new/choose).
+Great bug reports tend to have:
+
+- A quick summary and/or background
+- Steps to reproduce (sample code if you can)
+- What you expected would happen
+- What actually happens
+- Debug logs (remove credentials and customer data first)
+- Notes (possibly including why you think this might be happening, or stuff you tried that didn't work)
+
 ## License
 
-By contributing, you agree that your contributions will be licensed under its [Apache License][license].
+By contributing, you agree that your contributions will be licensed under the [Apache License][license].
 
 [license]: https://github.com/superbox-dev/netzooe_eservice_api/blob/main/LICENSE
 
